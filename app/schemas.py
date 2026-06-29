@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -26,3 +27,17 @@ class UserOut(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ProfileIn(BaseModel):
+    age: int = Field(ge=5, le=120)
+    height_cm: float = Field(ge=50, le=280)
+    weight_kg: float = Field(ge=20, le=400)
+    sex: Literal["male", "female"]
+
+
+class ProfileOut(ProfileIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
