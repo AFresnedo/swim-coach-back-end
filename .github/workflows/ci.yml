@@ -36,6 +36,8 @@ jobs:
       - name: Security scan
         run: uv run bandit -r app
 
+      # `uv audit` reads uv.lock natively and is faster, but is still experimental/unstable
+      # (https://astral.sh/blog/uv-audit) as of June 2026 - switch to it once it stabilizes.
       - name: Dependency vulnerability scan
         run: |
           uv export --format requirements.txt --no-hashes -o requirements.txt > /dev/null
