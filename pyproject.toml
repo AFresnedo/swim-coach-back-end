@@ -17,6 +17,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "pyright>=1.1.411",
     "pytest>=9.1.1",
     "ruff>=0.15.20",
 ]
@@ -34,3 +35,9 @@ select = ["E", "F", "I", "UP", "B", "N"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]
+
+[tool.pyright]
+include = ["app", "tests"]
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
