@@ -29,8 +29,8 @@ def db_engine():
 
 @pytest.fixture
 def db_session(db_engine):
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
-    session = TestingSessionLocal()
+    session_local = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+    session = session_local()
     try:
         yield session
     finally:
