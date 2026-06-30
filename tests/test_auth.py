@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 
@@ -69,7 +69,7 @@ def test_me_invalid_token(client):
 def test_me_expired_token(client, registered_user_token):
     expired_payload = {
         "sub": registered_user_token["email"],
-        "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
+        "exp": datetime.now(UTC) - timedelta(minutes=1),
     }
     expired_token = jwt.encode(expired_payload, settings.secret_key, algorithm=ALGORITHM)
     response = client.get("/auth/me", headers={"Authorization": f"Bearer {expired_token}"})
