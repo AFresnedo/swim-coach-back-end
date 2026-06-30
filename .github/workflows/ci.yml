@@ -9,6 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -25,6 +26,17 @@ jobs:
 
       - name: Lint
         run: uv run ruff check .
+
+      - name: Type check
+        run: uv run pyright .
+
+      - name: Security scan
+        run: uv run bandit -r app
+
+      - name: Dependency vulnerability scan
+        run: |
+          uv export --format requirements.txt --no-hashes -o requirements.txt > /dev/null
+          uvx pip-audit -r requirements.txt
 
       - name: Run tests
         run: uv run pytest -v

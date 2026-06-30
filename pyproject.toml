@@ -16,6 +16,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "bandit>=1.9.4",
     "httpx>=0.28.1",
     "pyright>=1.1.411",
     "pytest>=9.1.1",
@@ -46,3 +47,6 @@ include = ["app", "tests"]
 pythonVersion = "3.14"
 venvPath = "."
 venv = ".venv"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
