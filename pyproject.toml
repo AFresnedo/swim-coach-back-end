@@ -8,6 +8,7 @@ dependencies = [
     "bcrypt>=5.0.0",
     "email-validator>=2.3.0",
     "fastapi>=0.138.2",
+    "psycopg2-binary>=2.9.12",
     "pydantic-settings>=2.14.2",
     "pyjwt>=2.13.0",
     "sqlalchemy>=2.0.51",
@@ -16,6 +17,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "alembic>=1.18.5",
     "bandit>=1.9.4",
     "httpx>=0.28.1",
     "pyright>=1.1.411",
