@@ -75,7 +75,7 @@ jobs:
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
             for i in $(seq 1 5); do
-              if docker compose -f /infra/docker-compose.yml exec -T backend curl -sf http://localhost:8000/health; then
+              if docker compose -f /infra/docker-compose.yml exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"; then
                 echo "Health check passed"
                 exit 0
               fi
