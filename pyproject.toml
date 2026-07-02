@@ -37,6 +37,7 @@ branch = true
 
 [tool.ruff]
 line-length = 120
+exclude = ["alembic/versions/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "N"]
