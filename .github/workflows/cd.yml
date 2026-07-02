@@ -52,8 +52,10 @@ jobs:
           username: deploy
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
-            docker compose -f /opt/swimcoach/docker-compose.yml pull backend
-            docker compose -f /opt/swimcoach/docker-compose.yml run --rm backend alembic upgrade head
+            cd /infra
+            git pull
+            docker compose pull backend
+            docker compose run --rm backend alembic upgrade head
 
       - name: Deploy
         uses: appleboy/ssh-action@v1
@@ -61,14 +63,24 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: deploy
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          script: docker compose -f /opt/swimcoach/docker-compose.yml up -d --no-deps backend
+          script: |
+            cd /infra
+            docker compose up -d --no-deps backend
 
       - name: Smoke test
-        run: |
-          for i in $(seq 1 5); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.DROPLET_HOST }}/api/health)
-            if [ "$STATUS" = "200" ]; then echo "Health check passed" && exit 0; fi
-            echo "Attempt $i failed (HTTP $STATUS), retrying in 10s..."
-            sleep 10
-          done
-          echo "Smoke test failed after 5 attempts" && exit 1
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: deploy
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            for i in $(seq 1 5); do
+              if docker compose -f /infra/docker-compose.yml exec -T backend curl -sf http://localhost:8000/health; then
+                echo "Health check passed"
+                exit 0
+              fi
+              echo "Attempt $i failed, retrying in 10s..."
+              sleep 10
+            done
+            echo "Smoke test failed after 5 attempts"
+            exit 1
