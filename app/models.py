@@ -24,4 +24,4 @@ class Profile(Base):
     age: Mapped[int] = mapped_column(Integer)
     height_cm: Mapped[float] = mapped_column(Float)
     weight_kg: Mapped[float] = mapped_column(Float)
-    sex: Mapped[str] = mapped_column(String(10))
+    sex: Mapped[str] = mapped_column(String(20))
