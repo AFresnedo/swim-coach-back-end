@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
 
-from app.database import get_db
-from app.deps import get_current_user
-from app.models import Profile, User
+from app.database import DbDep
+from app.deps import CurrentUserDep
+from app.models import Profile
 from app.schemas import ProfileIn, ProfileOut
 
 router = APIRouter(tags=["profile"])
@@ -12,8 +11,8 @@ router = APIRouter(tags=["profile"])
 @router.post("/profile", response_model=ProfileOut)
 def upsert_profile(
     payload: ProfileIn,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: CurrentUserDep,
+    db: DbDep,
 ) -> Profile:
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
 
