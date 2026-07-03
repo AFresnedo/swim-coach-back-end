@@ -36,6 +36,16 @@ def test_create_profile_unauthenticated(client):
     assert response.status_code == 401
 
 
+def test_create_profile_prefer_not_to_say(client, auth_headers):
+    response = client.post(
+        "/profile",
+        json={"age": 25, "height_cm": 180.0, "weight_kg": 75.0, "sex": "prefer_not_to_say"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["sex"] == "prefer_not_to_say"
+
+
 def test_create_profile_invalid_sex(client, auth_headers):
     response = client.post(
         "/profile",
