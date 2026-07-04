@@ -41,3 +41,7 @@ class ProfileOut(ProfileIn):
 
     id: int
     user_id: int
+
+
+class UserCountOut(BaseModel):
+    user_count: int
