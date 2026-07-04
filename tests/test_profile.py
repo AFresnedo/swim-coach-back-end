@@ -1,5 +1,5 @@
 def test_create_profile(client, auth_headers):
-    response = client.post(
+    response = client.put(
         "/profile",
         json={"age": 25, "height_cm": 180.0, "weight_kg": 75.0, "sex": "male"},
         headers=auth_headers,
@@ -11,14 +11,14 @@ def test_create_profile(client, auth_headers):
 
 
 def test_upsert_profile_updates_existing(client, auth_headers):
-    first = client.post(
+    first = client.put(
         "/profile",
         json={"age": 25, "height_cm": 180.0, "weight_kg": 75.0, "sex": "male"},
         headers=auth_headers,
     )
     profile_id = first.json()["id"]
 
-    second = client.post(
+    second = client.put(
         "/profile",
         json={"age": 26, "height_cm": 181.0, "weight_kg": 76.0, "sex": "male"},
         headers=auth_headers,
@@ -29,7 +29,7 @@ def test_upsert_profile_updates_existing(client, auth_headers):
 
 
 def test_create_profile_unauthenticated(client):
-    response = client.post(
+    response = client.put(
         "/profile",
         json={"age": 25, "height_cm": 180.0, "weight_kg": 75.0, "sex": "male"},
     )
@@ -37,7 +37,7 @@ def test_create_profile_unauthenticated(client):
 
 
 def test_create_profile_prefer_not_to_say(client, auth_headers):
-    response = client.post(
+    response = client.put(
         "/profile",
         json={"age": 25, "height_cm": 180.0, "weight_kg": 75.0, "sex": "prefer_not_to_say"},
         headers=auth_headers,
@@ -47,7 +47,7 @@ def test_create_profile_prefer_not_to_say(client, auth_headers):
 
 
 def test_create_profile_invalid_sex(client, auth_headers):
-    response = client.post(
+    response = client.put(
         "/profile",
         json={"age": 25, "height_cm": 180.0, "weight_kg": 75.0, "sex": "alien"},
         headers=auth_headers,
