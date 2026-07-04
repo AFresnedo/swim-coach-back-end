@@ -8,7 +8,7 @@ from app.schemas import ProfileIn, ProfileOut
 router = APIRouter(tags=["profile"])
 
 
-@router.post("/profile", response_model=ProfileOut)
+@router.put("/profile", response_model=ProfileOut)
 def upsert_profile(
     payload: ProfileIn,
     current_user: CurrentUserDep,
