@@ -45,3 +45,21 @@ class ProfileOut(ProfileIn):
 
 class UserCountOut(BaseModel):
     user_count: int
+
+
+class GoalIn(BaseModel):
+    text: str = Field(min_length=1, max_length=2_000)
+
+
+class GoalOut(GoalIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    is_active: bool
+    deactivation_reason: Literal["reached", "abandoned", "other"] | None
+    created_at: datetime
+
+
+class GoalDeactivateReason(BaseModel):
+    reason: Literal["reached", "abandoned", "other"]
