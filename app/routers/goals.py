@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, HTTPException, status
 
 from app.database import DbDep
@@ -9,13 +11,11 @@ router = APIRouter(prefix="/goals", tags=["goals"])
 
 
 @router.get("", response_model=list[GoalOut])
-def list_goals(current_user: CurrentUserDep, db: DbDep) -> list[Goal]:
-    return (
-        db.query(Goal)
-        .filter(Goal.user_id == current_user.id, Goal.is_active.is_(True))
-        .order_by(Goal.created_at.desc())
-        .all()
-    )
+def list_goals(current_user: CurrentUserDep, db: DbDep, status: Literal["active", "all"] = "active") -> list[Goal]:
+    query = db.query(Goal).filter(Goal.user_id == current_user.id)
+    if status == "active":
+        query = query.filter(Goal.is_active.is_(True))
+    return query.order_by(Goal.created_at.desc()).all()
 
 
 @router.post("", response_model=GoalOut, status_code=status.HTTP_201_CREATED)
