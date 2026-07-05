@@ -34,6 +34,23 @@ def test_list_goals_returns_only_active(client, auth_headers):
     assert texts == ["Goal one"]
 
 
+def test_list_goals_status_all_returns_everything(client, auth_headers):
+    client.post("/goals", json={"text": "Goal one"}, headers=auth_headers)
+    second = client.post("/goals", json={"text": "Goal two"}, headers=auth_headers)
+
+    client.patch(f"/goals/{second.json()['id']}/deactivate", json={"reason": "reached"}, headers=auth_headers)
+
+    response = client.get("/goals", params={"status": "all"}, headers=auth_headers)
+    assert response.status_code == 200
+    texts = [g["text"] for g in response.json()]
+    assert texts == ["Goal two", "Goal one"]
+
+
+def test_list_goals_invalid_status_rejected(client, auth_headers):
+    response = client.get("/goals", params={"status": "bogus"}, headers=auth_headers)
+    assert response.status_code == 422
+
+
 def test_list_goals_only_returns_own_goals(client, auth_headers):
     client.post("/goals", json={"text": "My goal"}, headers=auth_headers)
 
