@@ -4,6 +4,11 @@ from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, Float, ForeignK
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.enums import COURSES, STROKES
+
+
+def _sql_in_clause(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN ({', '.join(f"'{value}'" for value in values)})"
 
 
 class User(Base):
@@ -57,13 +62,14 @@ class SwimTime(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     __table_args__ = (
-        CheckConstraint(
-            "stroke IN ('freestyle', 'backstroke', 'breaststroke', 'butterfly', 'individual_medley')",
-            name="ck_swim_times_stroke",
-        ),
-        CheckConstraint("course IN ('scy', 'scm', 'lcm')", name="ck_swim_times_course"),
+        CheckConstraint(_sql_in_clause("stroke", STROKES), name="ck_swim_times_stroke"),
+        CheckConstraint(_sql_in_clause("course", COURSES), name="ck_swim_times_course"),
         CheckConstraint("length > 0", name="ck_swim_times_length_positive"),
         CheckConstraint("time_seconds > 0", name="ck_swim_times_time_positive"),
         CheckConstraint("attempt_number > 0", name="ck_swim_times_attempt_number_positive"),
         Index("ix_swim_times_user_id_date_created_at_id", "user_id", "date", "created_at", "id"),
+        Index("ix_swim_times_user_id_stroke", "user_id", "stroke"),
+        Index("ix_swim_times_user_id_course", "user_id", "course"),
+        Index("ix_swim_times_user_id_length", "user_id", "length"),
+        Index("ix_swim_times_user_id_is_official", "user_id", "is_official"),
     )

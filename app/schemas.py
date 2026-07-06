@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.enums import CourseLiteral, StrokeLiteral
+
 
 class UserCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
@@ -68,8 +70,8 @@ class GoalDeactivateReason(BaseModel):
 
 class SwimTimeIn(BaseModel):
     date: date
-    stroke: Literal["freestyle", "backstroke", "breaststroke", "butterfly", "individual_medley"]
-    course: Literal["scy", "scm", "lcm"]
+    stroke: StrokeLiteral
+    course: CourseLiteral
     length: int = Field(gt=0)
     attempt_number: int = Field(gt=0, default=1)
     time_seconds: float = Field(gt=0)

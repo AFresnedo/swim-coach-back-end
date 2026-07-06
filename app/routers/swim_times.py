@@ -1,12 +1,13 @@
 import base64
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import and_, or_
 
 from app.database import DbDep
 from app.deps import CurrentUserDep
+from app.enums import CourseLiteral, StrokeLiteral
 from app.models import SwimTime
 from app.schemas import SwimTimeIn, SwimTimeOut, SwimTimePage
 
@@ -33,8 +34,8 @@ def list_swim_times(
     db: DbDep,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     cursor: Annotated[str | None, Query()] = None,
-    stroke: Literal["freestyle", "backstroke", "breaststroke", "butterfly", "individual_medley"] | None = None,
-    course: Literal["scy", "scm", "lcm"] | None = None,
+    stroke: StrokeLiteral | None = None,
+    course: CourseLiteral | None = None,
     length: Annotated[int | None, Query(gt=0)] = None,
     is_official: bool | None = None,
     date_from: date | None = None,

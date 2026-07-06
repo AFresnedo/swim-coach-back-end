@@ -46,9 +46,19 @@ def upgrade() -> None:
         ['user_id', 'date', 'created_at', 'id'],
         unique=False,
     )
+    op.create_index(op.f('ix_swim_times_user_id_stroke'), 'swim_times', ['user_id', 'stroke'], unique=False)
+    op.create_index(op.f('ix_swim_times_user_id_course'), 'swim_times', ['user_id', 'course'], unique=False)
+    op.create_index(op.f('ix_swim_times_user_id_length'), 'swim_times', ['user_id', 'length'], unique=False)
+    op.create_index(
+        op.f('ix_swim_times_user_id_is_official'), 'swim_times', ['user_id', 'is_official'], unique=False
+    )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
+    op.drop_index(op.f('ix_swim_times_user_id_is_official'), table_name='swim_times')
+    op.drop_index(op.f('ix_swim_times_user_id_length'), table_name='swim_times')
+    op.drop_index(op.f('ix_swim_times_user_id_course'), table_name='swim_times')
+    op.drop_index(op.f('ix_swim_times_user_id_stroke'), table_name='swim_times')
     op.drop_index(op.f('ix_swim_times_user_id_date_created_at_id'), table_name='swim_times')
     op.drop_table('swim_times')
