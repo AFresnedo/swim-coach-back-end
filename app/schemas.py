@@ -83,3 +83,8 @@ class SwimTimeOut(SwimTimeIn):
     id: int
     user_id: int
     created_at: datetime
+
+
+class SwimTimePage(BaseModel):
+    items: list[SwimTimeOut]
+    next_cursor: str | None
