@@ -1,3 +1,27 @@
+def test_get_profile_not_found(client, auth_headers):
+    response = client.get("/profile", headers=auth_headers)
+    assert response.status_code == 404
+
+
+def test_get_profile_unauthenticated(client):
+    response = client.get("/profile")
+    assert response.status_code == 401
+
+
+def test_get_profile_returns_existing(client, auth_headers):
+    client.put(
+        "/profile",
+        json={"age": 25, "height_cm": 180.0, "weight_kg": 75.0, "sex": "male"},
+        headers=auth_headers,
+    )
+
+    response = client.get("/profile", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["age"] == 25
+    assert body["sex"] == "male"
+
+
 def test_create_profile(client, auth_headers):
     response = client.put(
         "/profile",
