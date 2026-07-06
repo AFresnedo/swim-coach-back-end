@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -25,6 +25,11 @@ class Profile(Base):
     height_cm: Mapped[float] = mapped_column(Float)
     weight_kg: Mapped[float] = mapped_column(Float)
     sex: Mapped[str] = mapped_column(String(20))
+    unit_preference: Mapped[str] = mapped_column(String(10), default="metric")
+
+    __table_args__ = (
+        CheckConstraint("unit_preference IN ('metric', 'imperial')", name="ck_profiles_unit_preference"),
+    )
 
 
 class Goal(Base):
