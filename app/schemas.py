@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -64,3 +64,22 @@ class GoalOut(GoalIn):
 
 class GoalDeactivateReason(BaseModel):
     reason: Literal["reached", "abandoned", "other"]
+
+
+class SwimTimeIn(BaseModel):
+    date: date
+    stroke: Literal["freestyle", "backstroke", "breaststroke", "butterfly", "individual_medley"]
+    course: Literal["scy", "scm", "lcm"]
+    length: int = Field(gt=0)
+    attempt_number: int = Field(gt=0, default=1)
+    time_seconds: float = Field(gt=0)
+    is_official: bool = False
+    notes: str | None = Field(default=None, max_length=2_000)
+
+
+class SwimTimeOut(SwimTimeIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    created_at: datetime
