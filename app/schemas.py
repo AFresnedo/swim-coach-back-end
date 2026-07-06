@@ -34,6 +34,7 @@ class ProfileIn(BaseModel):
     height_cm: float = Field(ge=50, le=280)
     weight_kg: float = Field(ge=20, le=400)
     sex: Literal["male", "female", "prefer_not_to_say"]
+    unit_preference: Literal["metric", "imperial"] = "metric"
 
 
 class ProfileOut(ProfileIn):

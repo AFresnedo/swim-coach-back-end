@@ -32,6 +32,38 @@ def test_create_profile(client, auth_headers):
     body = response.json()
     assert body["age"] == 25
     assert body["sex"] == "male"
+    assert body["unit_preference"] == "metric"
+
+
+def test_create_profile_with_imperial_preference(client, auth_headers):
+    response = client.put(
+        "/profile",
+        json={
+            "age": 25,
+            "height_cm": 180.0,
+            "weight_kg": 75.0,
+            "sex": "male",
+            "unit_preference": "imperial",
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["unit_preference"] == "imperial"
+
+
+def test_create_profile_invalid_unit_preference(client, auth_headers):
+    response = client.put(
+        "/profile",
+        json={
+            "age": 25,
+            "height_cm": 180.0,
+            "weight_kg": 75.0,
+            "sex": "male",
+            "unit_preference": "furlongs",
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 422
 
 
 def test_upsert_profile_updates_existing(client, auth_headers):
