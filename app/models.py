@@ -65,5 +65,5 @@ class SwimTime(Base):
         CheckConstraint("length > 0", name="ck_swim_times_length_positive"),
         CheckConstraint("time_seconds > 0", name="ck_swim_times_time_positive"),
         CheckConstraint("attempt_number > 0", name="ck_swim_times_attempt_number_positive"),
-        Index("ix_swim_times_user_id_date_created_at", "user_id", "date", "created_at"),
+        Index("ix_swim_times_user_id_date_created_at_id", "user_id", "date", "created_at", "id"),
     )

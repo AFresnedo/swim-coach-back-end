@@ -41,11 +41,14 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(
-        op.f('ix_swim_times_user_id_date_created_at'), 'swim_times', ['user_id', 'date', 'created_at'], unique=False
+        op.f('ix_swim_times_user_id_date_created_at_id'),
+        'swim_times',
+        ['user_id', 'date', 'created_at', 'id'],
+        unique=False,
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_index(op.f('ix_swim_times_user_id_date_created_at'), table_name='swim_times')
+    op.drop_index(op.f('ix_swim_times_user_id_date_created_at_id'), table_name='swim_times')
     op.drop_table('swim_times')

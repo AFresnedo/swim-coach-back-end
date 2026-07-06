@@ -1,6 +1,6 @@
 import base64
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import and_, or_
@@ -13,14 +13,16 @@ from app.schemas import SwimTimeIn, SwimTimeOut, SwimTimePage
 router = APIRouter(prefix="/swim-times", tags=["swim-times"])
 
 
-def _encode_cursor(last_date: date, last_created_at: datetime) -> str:
-    return base64.urlsafe_b64encode(f"{last_date.isoformat()}|{last_created_at.isoformat()}".encode()).decode()
+def _encode_cursor(last_date: date, last_created_at: datetime, last_id: int) -> str:
+    return base64.urlsafe_b64encode(
+        f"{last_date.isoformat()}|{last_created_at.isoformat()}|{last_id}".encode()
+    ).decode()
 
 
-def _decode_cursor(cursor: str) -> tuple[date, datetime]:
+def _decode_cursor(cursor: str) -> tuple[date, datetime, int]:
     try:
-        raw_date, raw_created_at = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
-        return date.fromisoformat(raw_date), datetime.fromisoformat(raw_created_at)
+        raw_date, raw_created_at, raw_id = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
+        return date.fromisoformat(raw_date), datetime.fromisoformat(raw_created_at), int(raw_id)
     except (ValueError, UnicodeDecodeError) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid cursor") from exc
 
@@ -29,11 +31,11 @@ def _decode_cursor(cursor: str) -> tuple[date, datetime]:
 def list_swim_times(
     current_user: CurrentUserDep,
     db: DbDep,
-    limit: int = Query(50, ge=1, le=200),
-    cursor: str | None = Query(default=None),
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    cursor: Annotated[str | None, Query()] = None,
     stroke: Literal["freestyle", "backstroke", "breaststroke", "butterfly", "individual_medley"] | None = None,
     course: Literal["scy", "scm", "lcm"] | None = None,
-    length: int | None = Query(default=None, gt=0),
+    length: Annotated[int | None, Query(gt=0)] = None,
     is_official: bool | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -56,19 +58,26 @@ def list_swim_times(
         query = query.filter(SwimTime.date <= date_to)
 
     if cursor is not None:
-        cursor_date, cursor_created_at = _decode_cursor(cursor)
+        cursor_date, cursor_created_at, cursor_id = _decode_cursor(cursor)
         query = query.filter(
             or_(
                 SwimTime.date < cursor_date,
                 and_(SwimTime.date == cursor_date, SwimTime.created_at < cursor_created_at),
+                and_(
+                    SwimTime.date == cursor_date,
+                    SwimTime.created_at == cursor_created_at,
+                    SwimTime.id < cursor_id,
+                ),
             )
         )
 
-    rows = query.order_by(SwimTime.date.desc(), SwimTime.created_at.desc()).limit(limit + 1).all()
+    rows = query.order_by(SwimTime.date.desc(), SwimTime.created_at.desc(), SwimTime.id.desc()).limit(limit + 1).all()
 
     has_more = len(rows) > limit
     items = rows[:limit]
-    next_cursor = _encode_cursor(items[-1].date, items[-1].created_at) if has_more and items else None
+    next_cursor = (
+        _encode_cursor(items[-1].date, items[-1].created_at, items[-1].id) if has_more and items else None
+    )
 
     return SwimTimePage(items=items, next_cursor=next_cursor)
 

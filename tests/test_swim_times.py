@@ -1,3 +1,7 @@
+from datetime import date, datetime, timezone
+
+from app.models import SwimTime, User
+
 VALID_SWIM_TIME = {
     "date": "2026-07-01",
     "stroke": "freestyle",
@@ -136,6 +140,52 @@ def test_list_swim_times_cursor_handles_same_date_tiebreak(client, auth_headers)
 
     assert sorted(seen_ids) == sorted(created_ids)
     assert len(seen_ids) == len(set(seen_ids))
+
+
+def test_list_swim_times_cursor_survives_exact_created_at_collision(client, auth_headers, db_session):
+    user = db_session.query(User).filter(User.email == "test@example.com").first()
+    tied_at = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+    row_a = SwimTime(
+        user_id=user.id,
+        date=date(2026, 7, 1),
+        stroke="freestyle",
+        course="scy",
+        length=100,
+        attempt_number=1,
+        time_seconds=58.0,
+        is_official=False,
+        created_at=tied_at,
+    )
+    row_b = SwimTime(
+        user_id=user.id,
+        date=date(2026, 7, 1),
+        stroke="freestyle",
+        course="scy",
+        length=100,
+        attempt_number=2,
+        time_seconds=59.0,
+        is_official=False,
+        created_at=tied_at,
+    )
+    db_session.add_all([row_a, row_b])
+    db_session.commit()
+
+    seen_ids = []
+    cursor = None
+    for _ in range(5):
+        params = {"limit": 1}
+        if cursor is not None:
+            params["cursor"] = cursor
+        response = client.get("/swim-times", params=params, headers=auth_headers)
+        assert response.status_code == 200
+        body = response.json()
+        seen_ids.extend(t["id"] for t in body["items"])
+        cursor = body["next_cursor"]
+        if cursor is None:
+            break
+
+    assert sorted(seen_ids) == sorted([row_a.id, row_b.id])
 
 
 def test_list_swim_times_invalid_cursor_rejected(client, auth_headers):
