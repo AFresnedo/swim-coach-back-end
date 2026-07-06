@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 
 from app.database import DbDep
 from app.deps import CurrentUserDep
@@ -6,6 +6,19 @@ from app.models import Profile
 from app.schemas import ProfileIn, ProfileOut
 
 router = APIRouter(tags=["profile"])
+
+
+@router.get("/profile", response_model=ProfileOut)
+def get_profile(
+    current_user: CurrentUserDep,
+    db: DbDep,
+) -> Profile:
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+
+    return profile
 
 
 @router.put("/profile", response_model=ProfileOut)
