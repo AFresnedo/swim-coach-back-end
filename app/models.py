@@ -27,9 +27,7 @@ class Profile(Base):
     sex: Mapped[str] = mapped_column(String(20))
     unit_preference: Mapped[str] = mapped_column(String(10), default="metric")
 
-    __table_args__ = (
-        CheckConstraint("unit_preference IN ('metric', 'imperial')", name="ck_profiles_unit_preference"),
-    )
+    __table_args__ = (CheckConstraint("unit_preference IN ('metric', 'imperial')", name="ck_profiles_unit_preference"),)
 
 
 class Goal(Base):
