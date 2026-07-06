@@ -110,6 +110,34 @@ def test_list_swim_times_cursor_walks_full_set_without_overlap(client, auth_head
     assert cursor is None
 
 
+def test_list_swim_times_cursor_handles_same_date_tiebreak(client, auth_headers):
+    created_ids = []
+    for i in range(4):
+        response = client.post(
+            "/swim-times",
+            json={**VALID_SWIM_TIME, "date": "2026-07-01", "attempt_number": i + 1},
+            headers=auth_headers,
+        )
+        created_ids.append(response.json()["id"])
+
+    seen_ids = []
+    cursor = None
+    for _ in range(10):
+        params = {"limit": 1}
+        if cursor is not None:
+            params["cursor"] = cursor
+        response = client.get("/swim-times", params=params, headers=auth_headers)
+        assert response.status_code == 200
+        body = response.json()
+        seen_ids.extend(t["id"] for t in body["items"])
+        cursor = body["next_cursor"]
+        if cursor is None:
+            break
+
+    assert sorted(seen_ids) == sorted(created_ids)
+    assert len(seen_ids) == len(set(seen_ids))
+
+
 def test_list_swim_times_invalid_cursor_rejected(client, auth_headers):
     response = client.get("/swim-times", params={"cursor": "not-valid-base64!!"}, headers=auth_headers)
     assert response.status_code == 422

@@ -1,5 +1,5 @@
 import base64
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -13,14 +13,14 @@ from app.schemas import SwimTimeIn, SwimTimeOut, SwimTimePage
 router = APIRouter(prefix="/swim-times", tags=["swim-times"])
 
 
-def _encode_cursor(last_date: date, last_id: int) -> str:
-    return base64.urlsafe_b64encode(f"{last_date.isoformat()}|{last_id}".encode()).decode()
+def _encode_cursor(last_date: date, last_created_at: datetime) -> str:
+    return base64.urlsafe_b64encode(f"{last_date.isoformat()}|{last_created_at.isoformat()}".encode()).decode()
 
 
-def _decode_cursor(cursor: str) -> tuple[date, int]:
+def _decode_cursor(cursor: str) -> tuple[date, datetime]:
     try:
-        raw_date, raw_id = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
-        return date.fromisoformat(raw_date), int(raw_id)
+        raw_date, raw_created_at = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
+        return date.fromisoformat(raw_date), datetime.fromisoformat(raw_created_at)
     except (ValueError, UnicodeDecodeError) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid cursor") from exc
 
@@ -56,19 +56,19 @@ def list_swim_times(
         query = query.filter(SwimTime.date <= date_to)
 
     if cursor is not None:
-        cursor_date, cursor_id = _decode_cursor(cursor)
+        cursor_date, cursor_created_at = _decode_cursor(cursor)
         query = query.filter(
             or_(
                 SwimTime.date < cursor_date,
-                and_(SwimTime.date == cursor_date, SwimTime.id < cursor_id),
+                and_(SwimTime.date == cursor_date, SwimTime.created_at < cursor_created_at),
             )
         )
 
-    rows = query.order_by(SwimTime.date.desc(), SwimTime.id.desc()).limit(limit + 1).all()
+    rows = query.order_by(SwimTime.date.desc(), SwimTime.created_at.desc()).limit(limit + 1).all()
 
     has_more = len(rows) > limit
     items = rows[:limit]
-    next_cursor = _encode_cursor(items[-1].date, items[-1].id) if has_more and items else None
+    next_cursor = _encode_cursor(items[-1].date, items[-1].created_at) if has_more and items else None
 
     return SwimTimePage(items=items, next_cursor=next_cursor)
 
