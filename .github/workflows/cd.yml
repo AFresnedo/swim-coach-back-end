@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -28,7 +28,7 @@ jobs:
 
       - name: Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -36,7 +36,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           push: true
@@ -48,43 +48,47 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      SSH_HOST: ${{ secrets.DROPLET_HOST }}
     steps:
+      - name: Configure SSH key
+        env:
+          SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+        run: |
+          printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/deploy_key"
+          chmod 600 "$RUNNER_TEMP/deploy_key"
+
       - name: Migrate
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: deploy
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          script: |
-            cd /infra
-            git pull
-            docker compose pull backend
-            docker compose run --rm backend alembic upgrade head
+        run: |
+          ssh -o StrictHostKeyChecking=no -i "$RUNNER_TEMP/deploy_key" deploy@"$SSH_HOST" bash -s <<'EOF'
+          cd /infra
+          git pull
+          docker compose pull backend
+          docker compose run --rm backend alembic upgrade head
+          EOF
 
       - name: Deploy
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: deploy
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          script: |
-            cd /infra
-            docker compose up -d --no-deps backend
+        run: |
+          ssh -o StrictHostKeyChecking=no -i "$RUNNER_TEMP/deploy_key" deploy@"$SSH_HOST" bash -s <<'EOF'
+          cd /infra
+          docker compose up -d --no-deps backend
+          EOF
 
       - name: Smoke test
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: deploy
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          script: |
-            for i in $(seq 1 5); do
-              if docker compose -f /infra/docker-compose.yml exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"; then
-                echo "Health check passed"
-                exit 0
-              fi
-              echo "Attempt $i failed, retrying in 10s..."
-              sleep 10
-            done
-            echo "Smoke test failed after 5 attempts"
-            exit 1
+        run: |
+          ssh -o StrictHostKeyChecking=no -i "$RUNNER_TEMP/deploy_key" deploy@"$SSH_HOST" bash -s <<'EOF'
+          for i in $(seq 1 5); do
+            if docker compose -f /infra/docker-compose.yml exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "Smoke test failed after 5 attempts"
+          exit 1
+          EOF
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/deploy_key"
