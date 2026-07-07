@@ -1,0 +1,29 @@
+#!/bin/sh
+# Runs after `git merge` / `git pull` (git invokes post-merge on fast-forwards too).
+# Keeps the local dev database's schema in sync with whatever migrations `main`
+# just brought in, instead of silently drifting behind until something breaks.
+#
+# Setup (once per clone): ln -sf ../../scripts/hooks/post-merge .git/hooks/post-merge
+
+repo_root=$(git rev-parse --show-toplevel) || exit 0
+cd "$repo_root" || exit 0
+
+if [ ! -x ".venv/bin/alembic" ]; then
+    echo "post-merge: .venv/bin/alembic not found, skipping migration check (run 'uv sync'?)"
+    exit 0
+fi
+
+current=$(.venv/bin/alembic current 2>/dev/null | tail -n 1)
+head=$(.venv/bin/alembic heads 2>/dev/null | tail -n 1)
+
+if [ -z "$current" ] || [ -z "$head" ]; then
+    echo "post-merge: could not read alembic revisions (is the local DB reachable?), skipping"
+    exit 0
+fi
+
+if [ "${current%% *}" = "${head%% *}" ]; then
+    exit 0
+fi
+
+echo "post-merge: local DB schema is behind (at ${current%% *}, head is ${head%% *}) - running alembic upgrade head"
+.venv/bin/alembic upgrade head

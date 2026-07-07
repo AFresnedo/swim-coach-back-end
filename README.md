@@ -8,6 +8,7 @@ FastAPI backend for the SwimCoach app. Handles authentication for the
 ```bash
 uv sync
 cp .env.example .env  # then edit SECRET_KEY
+ln -sf ../../scripts/hooks/post-merge .git/hooks/post-merge  # auto-runs pending migrations after pull/merge
 ```
 
 ## Run
