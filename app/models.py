@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, Float, ForeignK
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
-from app.enums import COURSES, DEACTIVATION_REASONS, SEXES, STROKES
+from app.enums import COURSES, DEACTIVATION_REASONS, SEXES, STROKES, UNIT_PREFERENCES
 
 
 def _sql_in_clause(column: str, values: tuple[str, ...]) -> str:
@@ -37,7 +37,7 @@ class Profile(Base):
     unit_preference: Mapped[str] = mapped_column(String(10), default="metric")
 
     __table_args__ = (
-        CheckConstraint("unit_preference IN ('metric', 'imperial')", name="ck_profiles_unit_preference"),
+        CheckConstraint(_sql_in_clause("unit_preference", UNIT_PREFERENCES), name="ck_profiles_unit_preference"),
         CheckConstraint(_sql_in_clause("sex", SEXES), name="ck_profiles_sex"),
     )
 

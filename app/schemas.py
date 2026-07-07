@@ -1,9 +1,8 @@
 from datetime import date, datetime
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.enums import CourseLiteral, DeactivationReasonLiteral, SexLiteral, StrokeLiteral
+from app.enums import CourseLiteral, DeactivationReasonLiteral, SexLiteral, StrokeLiteral, UnitPreferenceLiteral
 
 
 class UserCreate(BaseModel):
@@ -36,7 +35,7 @@ class ProfileIn(BaseModel):
     height_cm: float = Field(ge=50, le=280)
     weight_kg: float = Field(ge=20, le=400)
     sex: SexLiteral
-    unit_preference: Literal["metric", "imperial"] = "metric"
+    unit_preference: UnitPreferenceLiteral = "metric"
 
 
 class ProfileOut(ProfileIn):
