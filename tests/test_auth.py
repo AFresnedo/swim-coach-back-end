@@ -167,11 +167,22 @@ def test_me_invalid_token(client):
     assert response.status_code == 401
 
 
-def test_me_expired_token(client, registered_user_token):
+def test_me_expired_token(client):
     expired_payload = {
-        "sub": registered_user_token["email"],
+        # Value is irrelevant here: jwt.decode raises on the expired exp claim
+        # before decode_access_token ever inspects sub.
+        "sub": "1",
         "exp": datetime.now(UTC) - timedelta(minutes=1),
     }
     expired_token = jwt.encode(expired_payload, settings.secret_key, algorithm=ALGORITHM)
     response = client.get("/auth/me", headers={"Authorization": f"Bearer {expired_token}"})
     assert response.status_code == 401
+
+
+def test_access_token_subject_is_user_id_not_email(registered_user_token):
+    # Locks in the fix: sub must be the immutable user id, not the mutable email,
+    # so a token can't resolve to a different account if email reuse is ever
+    # possible (e.g. a future email-change feature).
+    payload = jwt.decode(registered_user_token["token"], settings.secret_key, algorithms=[ALGORITHM])
+    assert payload["sub"] != registered_user_token["email"]
+    assert payload["sub"].isdigit()

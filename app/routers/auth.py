@@ -51,7 +51,7 @@ def register(request: Request, payload: UserCreate, db: DbDep) -> Token:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc
         raise
 
-    return Token(access_token=create_access_token(subject=user.email))
+    return Token(access_token=create_access_token(subject=user.id))
 
 
 @router.post("/login", response_model=Token)
@@ -66,7 +66,7 @@ def login(request: Request, payload: UserLogin, db: DbDep) -> Token:
     if user is None or not password_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
-    return Token(access_token=create_access_token(subject=user.email))
+    return Token(access_token=create_access_token(subject=user.id))
 
 
 @router.get("/me", response_model=UserOut)
