@@ -76,9 +76,7 @@ def list_swim_times(
 
     has_more = len(rows) > limit
     items = rows[:limit]
-    next_cursor = (
-        _encode_cursor(items[-1].date, items[-1].created_at, items[-1].id) if has_more and items else None
-    )
+    next_cursor = _encode_cursor(items[-1].date, items[-1].created_at, items[-1].id) if has_more and items else None
 
     return SwimTimePage(items=items, next_cursor=next_cursor)
 

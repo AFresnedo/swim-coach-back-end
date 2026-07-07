@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from app.models import SwimTime, User
 
@@ -144,7 +144,7 @@ def test_list_swim_times_cursor_handles_same_date_tiebreak(client, auth_headers)
 
 def test_list_swim_times_cursor_survives_exact_created_at_collision(client, auth_headers, db_session):
     user = db_session.query(User).filter(User.email == "test@example.com").first()
-    tied_at = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+    tied_at = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)
 
     row_a = SwimTime(
         user_id=user.id,
