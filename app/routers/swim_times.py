@@ -78,7 +78,7 @@ def list_swim_times(
     items = rows[:limit]
     next_cursor = _encode_cursor(items[-1].date, items[-1].created_at, items[-1].id) if has_more and items else None
 
-    return SwimTimePage(items=items, next_cursor=next_cursor)
+    return SwimTimePage(items=[SwimTimeOut.model_validate(item) for item in items], next_cursor=next_cursor)
 
 
 @router.post("", response_model=SwimTimeOut, status_code=status.HTTP_201_CREATED)
