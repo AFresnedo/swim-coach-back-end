@@ -1,6 +1,14 @@
 import os
 
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"  # must precede any `from app...` import
+# Must precede any `from app...` import. Pinned explicitly rather than left to
+# whatever's in a developer's local .env, so the suite's rate-limit tests (which
+# assume these exact thresholds to actually trip a 429) can't silently pass or
+# fail differently depending on unrelated local tuning (e.g. loosened values
+# someone set for their own Playwright/e2e runs against this same backend).
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["LOGIN_RATE_LIMIT_PER_EMAIL"] = "5/5minutes"
+os.environ["LOGIN_RATE_LIMIT_PER_IP"] = "20/5minutes"
+os.environ["REGISTER_RATE_LIMIT_PER_IP"] = "5/hour"
 
 import pytest
 from fastapi.testclient import TestClient
