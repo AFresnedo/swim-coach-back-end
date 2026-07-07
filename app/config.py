@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24
 
     # Rate limits, expressed in the `limits` library's string syntax (e.g. "5/5minutes",
-    # "20/hour") consumed directly by slowapi's @limiter.limit(...) decorators. Kept
+    # "20/hour") consumed directly by app.rate_limit.enforce_rate_limit(). Kept
     # configurable via env vars rather than hardcoded so they can be tuned in production
     # without a code change/redeploy.
     login_rate_limit_per_email: str = "5/5minutes"
