@@ -32,3 +32,13 @@ def test_docs_enabled_in_development():
 
 def test_docs_disabled_in_production():
     assert _docs_urls("production") == "None None None"
+
+
+def test_trusted_host_allows_backend(client):
+    response = client.get("/health", headers={"Host": "backend"})
+    assert response.status_code == 200
+
+
+def test_trusted_host_rejects_unknown_host(client):
+    response = client.get("/health", headers={"Host": "evil.example.com"})
+    assert response.status_code == 400
