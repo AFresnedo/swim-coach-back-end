@@ -1,3 +1,5 @@
+from typing import Literal
+
 from limits import parse
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -5,6 +7,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    # Defaults to "development" so a plain local `uvicorn --reload` run needs no
+    # setup. Deployed environments (see ../infra/docker-compose.yml) set
+    # ENVIRONMENT=production explicitly. Also gates /docs, /redoc, and
+    # /openapi.json (see app/main.py): those reflect the full, uncurated
+    # schema, so they're never meant to be reachable in production. A future
+    # public API's docs would be a separate, deliberately curated surface with
+    # its own setting - not this flag repurposed.
+    environment: Literal["development", "production"] = "development"
 
     database_url: str = "sqlite:///./swimcoach.db"
     secret_key: str
