@@ -97,6 +97,60 @@ def test_register_reraises_unrelated_integrity_error(client, monkeypatch):
         )
 
 
+def test_register_rate_limit_exceeded(client):
+    for i in range(5):
+        response = client.post(
+            "/auth/register",
+            json={"name": f"User{i}", "email": f"rl-register-{i}@example.com", "password": "supersecret123"},
+        )
+        assert response.status_code == 201
+
+    response = client.post(
+        "/auth/register",
+        json={"name": "Overflow", "email": "rl-register-overflow@example.com", "password": "supersecret123"},
+    )
+    assert response.status_code == 429
+    assert response.json() == {"detail": "Too many requests. Try again later."}
+    assert "Retry-After" in response.headers
+
+
+def test_login_rate_limit_per_email_exceeded(client, registered_user_token):
+    email = registered_user_token["email"]
+    for _ in range(5):
+        response = client.post("/auth/login", json={"email": email, "password": "wrongpassword"})
+        assert response.status_code == 401
+
+    response = client.post("/auth/login", json={"email": email, "password": "wrongpassword"})
+    assert response.status_code == 429
+    assert response.json() == {"detail": "Too many requests. Try again later."}
+    assert "Retry-After" in response.headers
+
+
+def test_login_rate_limit_per_email_is_independent_per_email(client, registered_user_token):
+    email = registered_user_token["email"]
+    for _ in range(5):
+        client.post("/auth/login", json={"email": email, "password": "wrongpassword"})
+    blocked = client.post("/auth/login", json={"email": email, "password": "wrongpassword"})
+    assert blocked.status_code == 429
+
+    # A different email must be unaffected - proves the limit is keyed per email,
+    # not shared globally across every login attempt.
+    other = client.post("/auth/login", json={"email": "someone-else@example.com", "password": "whatever123"})
+    assert other.status_code == 401
+
+
+def test_login_rate_limit_per_ip_exceeded(client):
+    # Use a distinct email per call so the per-email limit (5/5minutes) never
+    # trips first - this isolates testing the broader per-IP limit (20/5minutes).
+    for i in range(20):
+        response = client.post("/auth/login", json={"email": f"rl-ip-{i}@example.com", "password": "whatever123"})
+        assert response.status_code == 401
+
+    response = client.post("/auth/login", json={"email": "rl-ip-overflow@example.com", "password": "whatever123"})
+    assert response.status_code == 429
+    assert response.json() == {"detail": "Too many requests. Try again later."}
+
+
 def test_me_valid_token(client, auth_headers):
     response = client.get("/auth/me", headers=auth_headers)
     assert response.status_code == 200

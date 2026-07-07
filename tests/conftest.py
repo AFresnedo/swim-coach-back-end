@@ -10,8 +10,21 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
+from app.rate_limit import reset_rate_limits
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    # Rate-limit storage is an in-memory singleton shared across the whole test
+    # process, not per-test like the DB fixtures below. Without this, rate limits
+    # (e.g. register's 5/hour) would exhaust across the entire suite instead of
+    # resetting per test, since nearly every test registers a user via the
+    # registered_user_token/auth_headers fixtures.
+    reset_rate_limits()
+    yield
+    reset_rate_limits()
 
 
 @pytest.fixture
