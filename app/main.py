@@ -1,5 +1,8 @@
-from fastapi import FastAPI
+from collections.abc import Awaitable, Callable
+
+from fastapi import FastAPI, Request
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.responses import Response
 
 from app.config import settings
 from app.routers import auth, goals, profile, swim_times, users
@@ -29,6 +32,18 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["backend", "testserver", "localhost", "127.0.0.1"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    # Tells the browser to trust our Content-Type instead of guessing one from
+    # the response body ("MIME-sniffing") - closes a low-likelihood XSS class
+    # for free, since we never serve user-controlled content that could be
+    # crafted to look like HTML/JS under a different declared type.
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
 
 app.include_router(auth.router)
 app.include_router(goals.router)

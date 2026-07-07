@@ -42,3 +42,8 @@ def test_trusted_host_allows_backend(client):
 def test_trusted_host_rejects_unknown_host(client):
     response = client.get("/health", headers={"Host": "evil.example.com"})
     assert response.status_code == 400
+
+
+def test_nosniff_header_present(client):
+    response = client.get("/health")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
