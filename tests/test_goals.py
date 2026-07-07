@@ -115,3 +115,16 @@ def test_deactivate_goal_invalid_reason_rejected(client, auth_headers):
 def test_deactivate_goal_not_found(client, auth_headers):
     response = client.patch("/goals/999/deactivate", json={"reason": "reached"}, headers=auth_headers)
     assert response.status_code == 404
+
+
+def test_deactivate_goal_owned_by_another_user_not_found(client, auth_headers):
+    other = client.post(
+        "/auth/register",
+        json={"name": "Other User", "email": "other3@example.com", "password": "supersecret123"},
+    )
+    other_headers = {"Authorization": f"Bearer {other.json()['access_token']}"}
+    created = client.post("/goals", json={"text": "Their goal"}, headers=other_headers)
+    goal_id = created.json()["id"]
+
+    response = client.patch(f"/goals/{goal_id}/deactivate", json={"reason": "reached"}, headers=auth_headers)
+    assert response.status_code == 404

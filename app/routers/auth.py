@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
 
+from app.config import settings
 from app.database import DbDep
 from app.deps import CurrentUserDep
 from app.models import User
+from app.rate_limit import enforce_rate_limit, get_remote_address
 from app.schemas import Token, UserCreate, UserLogin, UserOut
 from app.security import create_access_token, hash_password, verify_password
 
@@ -23,7 +25,9 @@ _DUMMY_HASH = hash_password("not-a-real-password")
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-def register(payload: UserCreate, db: DbDep) -> Token:
+def register(request: Request, payload: UserCreate, db: DbDep) -> Token:
+    enforce_rate_limit(settings.register_rate_limit_per_ip, get_remote_address(request))
+
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
@@ -47,11 +51,14 @@ def register(payload: UserCreate, db: DbDep) -> Token:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc
         raise
 
-    return Token(access_token=create_access_token(subject=user.email))
+    return Token(access_token=create_access_token(subject=user.id))
 
 
 @router.post("/login", response_model=Token)
-def login(payload: UserLogin, db: DbDep) -> Token:
+def login(request: Request, payload: UserLogin, db: DbDep) -> Token:
+    enforce_rate_limit(settings.login_rate_limit_per_ip, get_remote_address(request))
+    enforce_rate_limit(settings.login_rate_limit_per_email, payload.email)
+
     user = db.query(User).filter(User.email == payload.email).first()
     hashed_password = user.hashed_password if user is not None else _DUMMY_HASH
     password_valid = verify_password(payload.password, hashed_password)
@@ -59,7 +66,7 @@ def login(payload: UserLogin, db: DbDep) -> Token:
     if user is None or not password_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
-    return Token(access_token=create_access_token(subject=user.email))
+    return Token(access_token=create_access_token(subject=user.id))
 
 
 @router.get("/me", response_model=UserOut)

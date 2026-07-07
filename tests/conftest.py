@@ -1,6 +1,14 @@
 import os
 
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"  # must precede any `from app...` import
+# Must precede any `from app...` import. Pinned explicitly rather than left to
+# whatever's in a developer's local .env, so the suite's rate-limit tests (which
+# assume these exact thresholds to actually trip a 429) can't silently pass or
+# fail differently depending on unrelated local tuning (e.g. loosened values
+# someone set for their own Playwright/e2e runs against this same backend).
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["LOGIN_RATE_LIMIT_PER_EMAIL"] = "5/5minutes"
+os.environ["LOGIN_RATE_LIMIT_PER_IP"] = "20/5minutes"
+os.environ["REGISTER_RATE_LIMIT_PER_IP"] = "5/hour"
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,8 +18,21 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
+from app.rate_limit import reset_rate_limits
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    # Rate-limit storage is an in-memory singleton shared across the whole test
+    # process, not per-test like the DB fixtures below. Without this, rate limits
+    # (e.g. register's 5/hour) would exhaust across the entire suite instead of
+    # resetting per test, since nearly every test registers a user via the
+    # registered_user_token/auth_headers fixtures.
+    reset_rate_limits()
+    yield
+    reset_rate_limits()
 
 
 @pytest.fixture

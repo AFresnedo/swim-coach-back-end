@@ -16,13 +16,17 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
-def create_access_token(subject: str) -> str:
+def create_access_token(subject: int) -> str:
     expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
-    payload = {"sub": subject, "exp": expire}
+    # sub is the user's immutable id, not their email: email is mutable (a future
+    # email-change feature could let it be reused by a different account), and a
+    # still-valid token minted before the change would then resolve to the wrong
+    # user if it were keyed by email instead.
+    payload = {"sub": str(subject), "exp": expire}
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> str | None:
+def decode_access_token(token: str) -> int | None:
     try:
         payload = jwt.decode(
             token,
@@ -30,6 +34,6 @@ def decode_access_token(token: str) -> str | None:
             algorithms=[ALGORITHM],
             options={"require": ["exp"]},
         )
-        return payload.get("sub")
-    except jwt.PyJWTError:
+        return int(payload["sub"])
+    except jwt.PyJWTError, KeyError, ValueError, TypeError:
         return None
