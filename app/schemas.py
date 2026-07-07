@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.enums import CourseLiteral, StrokeLiteral
+from app.enums import CourseLiteral, DeactivationReasonLiteral, SexLiteral, StrokeLiteral
 
 
 class UserCreate(BaseModel):
@@ -35,7 +35,7 @@ class ProfileIn(BaseModel):
     age: int = Field(ge=5, le=120)
     height_cm: float = Field(ge=50, le=280)
     weight_kg: float = Field(ge=20, le=400)
-    sex: Literal["male", "female", "prefer_not_to_say"]
+    sex: SexLiteral
     unit_preference: Literal["metric", "imperial"] = "metric"
 
 
@@ -60,12 +60,12 @@ class GoalOut(GoalIn):
     id: int
     user_id: int
     is_active: bool
-    deactivation_reason: Literal["reached", "abandoned", "other"] | None
+    deactivation_reason: DeactivationReasonLiteral | None
     created_at: datetime
 
 
 class GoalDeactivateReason(BaseModel):
-    reason: Literal["reached", "abandoned", "other"]
+    reason: DeactivationReasonLiteral
 
 
 class SwimTimeIn(BaseModel):

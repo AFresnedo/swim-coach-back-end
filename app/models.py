@@ -4,11 +4,15 @@ from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, Float, ForeignK
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
-from app.enums import COURSES, STROKES
+from app.enums import COURSES, DEACTIVATION_REASONS, SEXES, STROKES
 
 
 def _sql_in_clause(column: str, values: tuple[str, ...]) -> str:
     return f"{column} IN ({', '.join(f"'{value}'" for value in values)})"
+
+
+def _nullable_sql_in_clause(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IS NULL OR {_sql_in_clause(column, values)}"
 
 
 class User(Base):
@@ -32,7 +36,10 @@ class Profile(Base):
     sex: Mapped[str] = mapped_column(String(20))
     unit_preference: Mapped[str] = mapped_column(String(10), default="metric")
 
-    __table_args__ = (CheckConstraint("unit_preference IN ('metric', 'imperial')", name="ck_profiles_unit_preference"),)
+    __table_args__ = (
+        CheckConstraint("unit_preference IN ('metric', 'imperial')", name="ck_profiles_unit_preference"),
+        CheckConstraint(_sql_in_clause("sex", SEXES), name="ck_profiles_sex"),
+    )
 
 
 class Goal(Base):
@@ -44,6 +51,13 @@ class Goal(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     deactivation_reason: Mapped[str | None] = mapped_column(String(25), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (
+        CheckConstraint(
+            _nullable_sql_in_clause("deactivation_reason", DEACTIVATION_REASONS),
+            name="ck_goals_deactivation_reason",
+        ),
+    )
 
 
 class SwimTime(Base):
