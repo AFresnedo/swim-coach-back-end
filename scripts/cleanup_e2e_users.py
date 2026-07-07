@@ -12,7 +12,7 @@ import sys
 from sqlalchemy import delete, select
 
 from app.database import SessionLocal
-from app.models import Goal, Profile, User
+from app.models import Goal, Profile, SwimTime, User
 
 
 def main(emails: list[str]) -> None:
@@ -26,6 +26,7 @@ def main(emails: list[str]) -> None:
             print("No matching e2e test users found.")
             return
 
+        db.execute(delete(SwimTime).where(SwimTime.user_id.in_(user_ids)))
         db.execute(delete(Goal).where(Goal.user_id.in_(user_ids)))
         db.execute(delete(Profile).where(Profile.user_id.in_(user_ids)))
         db.execute(delete(User).where(User.id.in_(user_ids)))

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
 from app.database import DbDep
 from app.deps import CurrentUserDep
@@ -7,6 +8,18 @@ from app.schemas import Token, UserCreate, UserLogin, UserOut
 from app.security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# A bcrypt hash of an arbitrary, never-used password. It exists purely as something
+# for verify_password() to hash *against* when no matching user was found, so that
+# a login attempt for an email that doesn't exist takes the same ~150ms bcrypt-hashing
+# time as one for a real email with a wrong password. Without this, `login` below would
+# return almost instantly when the email isn't found (verify_password is skipped by the
+# `or` short-circuit) but take ~150ms when it is found (verify_password actually runs) -
+# an attacker could use that timing difference alone to enumerate which emails are
+# registered, even though both cases return the same "Incorrect email or password"
+# response. Computed once at import time, not per-request, since bcrypt hashing is the
+# expensive part we're trying to control, not avoid.
+_DUMMY_HASH = hash_password("not-a-real-password")
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -20,7 +33,19 @@ def register(payload: UserCreate, db: DbDep) -> Token:
         hashed_password=hash_password(payload.password),
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        # Two concurrent registrations for the same email can both pass the SELECT
+        # check above before either commits (TOCTOU race), so the uniqueness violation
+        # can only be caught here, at the actual INSERT. Confirm the failure was really
+        # the email-uniqueness constraint (rather than some unrelated future constraint
+        # on this table) before reporting it as such, instead of assuming any
+        # IntegrityError here must mean this.
+        db.rollback()
+        if "email" in str(exc.orig).lower():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc
+        raise
 
     return Token(access_token=create_access_token(subject=user.email))
 
@@ -28,7 +53,10 @@ def register(payload: UserCreate, db: DbDep) -> Token:
 @router.post("/login", response_model=Token)
 def login(payload: UserLogin, db: DbDep) -> Token:
     user = db.query(User).filter(User.email == payload.email).first()
-    if user is None or not verify_password(payload.password, user.hashed_password):
+    hashed_password = user.hashed_password if user is not None else _DUMMY_HASH
+    password_valid = verify_password(payload.password, hashed_password)
+
+    if user is None or not password_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
     return Token(access_token=create_access_token(subject=user.email))

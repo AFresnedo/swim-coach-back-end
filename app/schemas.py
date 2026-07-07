@@ -1,7 +1,8 @@
-from datetime import datetime
-from typing import Literal
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from app.enums import CourseLiteral, DeactivationReasonLiteral, SexLiteral, StrokeLiteral, UnitPreferenceLiteral
 
 
 class UserCreate(BaseModel):
@@ -33,8 +34,8 @@ class ProfileIn(BaseModel):
     age: int = Field(ge=5, le=120)
     height_cm: float = Field(ge=50, le=280)
     weight_kg: float = Field(ge=20, le=400)
-    sex: Literal["male", "female", "prefer_not_to_say"]
-    unit_preference: Literal["metric", "imperial"] = "metric"
+    sex: SexLiteral
+    unit_preference: UnitPreferenceLiteral = "metric"
 
 
 class ProfileOut(ProfileIn):
@@ -58,9 +59,33 @@ class GoalOut(GoalIn):
     id: int
     user_id: int
     is_active: bool
-    deactivation_reason: Literal["reached", "abandoned", "other"] | None
+    deactivation_reason: DeactivationReasonLiteral | None
     created_at: datetime
 
 
 class GoalDeactivateReason(BaseModel):
-    reason: Literal["reached", "abandoned", "other"]
+    reason: DeactivationReasonLiteral
+
+
+class SwimTimeIn(BaseModel):
+    date: date
+    stroke: StrokeLiteral
+    course: CourseLiteral
+    length: int = Field(gt=0)
+    attempt_number: int = Field(gt=0, default=1)
+    time_seconds: float = Field(gt=0)
+    is_official: bool = False
+    notes: str | None = Field(default=None, max_length=2_000)
+
+
+class SwimTimeOut(SwimTimeIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    created_at: datetime
+
+
+class SwimTimePage(BaseModel):
+    items: list[SwimTimeOut]
+    next_cursor: str | None

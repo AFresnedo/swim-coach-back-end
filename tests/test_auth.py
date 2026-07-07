@@ -1,6 +1,9 @@
 from datetime import UTC, datetime, timedelta
 
 import jwt
+import pytest
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.security import ALGORITHM
@@ -48,6 +51,50 @@ def test_login_wrong_password(client, registered_user_token):
         json={"email": registered_user_token["email"], "password": "wrongpassword"},
     )
     assert response.status_code == 401
+
+
+def test_login_nonexistent_email(client):
+    response = client.post(
+        "/auth/login",
+        json={"email": "nobody-here@example.com", "password": "whatever123"},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Incorrect email or password"
+
+
+def test_register_race_returns_400_not_500(client, monkeypatch):
+    from sqlalchemy.orm import Query
+
+    payload = {"name": "Racer", "email": "racer@example.com", "password": "supersecret123"}
+
+    first = client.post("/auth/register", json=payload)
+    assert first.status_code == 201
+
+    # Simulate two concurrent registrations for the same email both passing the
+    # SELECT check before either commits (TOCTOU race): force the pre-check to
+    # report "no existing user" even though the row above already exists, so this
+    # request proceeds straight to INSERT and collides with it at commit time.
+    monkeypatch.setattr(Query, "first", lambda self: None)
+
+    second = client.post("/auth/register", json={**payload, "name": "Racer Two"})
+    assert second.status_code == 400
+    assert second.json()["detail"] == "Email already registered"
+
+
+def test_register_reraises_unrelated_integrity_error(client, monkeypatch):
+    # Proves the except block actually discriminates by cause instead of assuming
+    # every IntegrityError here means a duplicate email: a constraint violation
+    # that has nothing to do with "email" must propagate as-is, not get mislabeled.
+    def fake_commit(self):
+        raise IntegrityError("INSERT", {}, Exception("some unrelated constraint violation"))
+
+    monkeypatch.setattr(Session, "commit", fake_commit)
+
+    with pytest.raises(IntegrityError):
+        client.post(
+            "/auth/register",
+            json={"name": "X", "email": "unrelated@example.com", "password": "supersecret123"},
+        )
 
 
 def test_me_valid_token(client, auth_headers):

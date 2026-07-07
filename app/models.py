@@ -1,9 +1,18 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.enums import COURSES, DEACTIVATION_REASONS, SEXES, STROKES, UNIT_PREFERENCES
+
+
+def _sql_in_clause(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN ({', '.join(f"'{value}'" for value in values)})"
+
+
+def _nullable_sql_in_clause(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IS NULL OR {_sql_in_clause(column, values)}"
 
 
 class User(Base):
@@ -27,7 +36,10 @@ class Profile(Base):
     sex: Mapped[str] = mapped_column(String(20))
     unit_preference: Mapped[str] = mapped_column(String(10), default="metric")
 
-    __table_args__ = (CheckConstraint("unit_preference IN ('metric', 'imperial')", name="ck_profiles_unit_preference"),)
+    __table_args__ = (
+        CheckConstraint(_sql_in_clause("unit_preference", UNIT_PREFERENCES), name="ck_profiles_unit_preference"),
+        CheckConstraint(_sql_in_clause("sex", SEXES), name="ck_profiles_sex"),
+    )
 
 
 class Goal(Base):
@@ -39,3 +51,39 @@ class Goal(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     deactivation_reason: Mapped[str | None] = mapped_column(String(25), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (
+        CheckConstraint(
+            _nullable_sql_in_clause("deactivation_reason", DEACTIVATION_REASONS),
+            name="ck_goals_deactivation_reason",
+        ),
+    )
+
+
+class SwimTime(Base):
+    __tablename__ = "swim_times"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    date: Mapped[date] = mapped_column(Date)
+    stroke: Mapped[str] = mapped_column(String(20))
+    course: Mapped[str] = mapped_column(String(3))
+    length: Mapped[int] = mapped_column(Integer)
+    attempt_number: Mapped[int] = mapped_column(Integer, default=1)
+    time_seconds: Mapped[float] = mapped_column(Float)
+    is_official: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (
+        CheckConstraint(_sql_in_clause("stroke", STROKES), name="ck_swim_times_stroke"),
+        CheckConstraint(_sql_in_clause("course", COURSES), name="ck_swim_times_course"),
+        CheckConstraint("length > 0", name="ck_swim_times_length_positive"),
+        CheckConstraint("time_seconds > 0", name="ck_swim_times_time_positive"),
+        CheckConstraint("attempt_number > 0", name="ck_swim_times_attempt_number_positive"),
+        Index("ix_swim_times_user_id_date_created_at_id", "user_id", "date", "created_at", "id"),
+        Index("ix_swim_times_user_id_stroke", "user_id", "stroke"),
+        Index("ix_swim_times_user_id_course", "user_id", "course"),
+        Index("ix_swim_times_user_id_length", "user_id", "length"),
+        Index("ix_swim_times_user_id_is_official", "user_id", "is_official"),
+    )
