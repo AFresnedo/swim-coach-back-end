@@ -9,6 +9,7 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["LOGIN_RATE_LIMIT_PER_EMAIL"] = "5/5minutes"
 os.environ["LOGIN_RATE_LIMIT_PER_IP"] = "20/5minutes"
 os.environ["REGISTER_RATE_LIMIT_PER_IP"] = "5/hour"
+os.environ["STATS_RATE_LIMIT_PER_IP"] = "30/minute"
 
 import pytest
 from fastapi.testclient import TestClient
