@@ -2,6 +2,9 @@
 # `uv run uvicorn app.main:app --reload` for fast reload/debugging. This is
 # distinct from ../infra/docker-compose.yml, which is the production deploy
 # stack (includes the built app images, Caddy, etc).
+# Image tags below are duplicated in ../infra/docker-compose.yml (production) since
+# they're two separate compose files with deliberately different auth config - keep
+# both in sync when bumping either one.
 services:
   postgres:
     image: pgvector/pgvector:pg17

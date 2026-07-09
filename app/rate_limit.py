@@ -3,7 +3,7 @@ import time
 from fastapi import HTTPException, Request, status
 from limits import parse
 from limits.errors import StorageError
-from limits.storage import MemoryStorage, storage_from_string
+from limits.storage import storage_from_string
 from limits.strategies import FixedWindowRateLimiter
 
 from app.config import settings
@@ -11,11 +11,7 @@ from app.config import settings
 # wrap_exceptions=True makes every backend (Redis, memory, or whatever this becomes)
 # raise the same limits.errors.StorageError on failure, so enforce_rate_limit() below
 # can fail closed without needing to know which backend-specific exception to catch.
-_storage = (
-    storage_from_string(settings.redis_url, wrap_exceptions=True)
-    if settings.redis_url
-    else MemoryStorage(wrap_exceptions=True)
-)
+_storage = storage_from_string(settings.redis_url, wrap_exceptions=True)
 _limiter = FixedWindowRateLimiter(_storage)
 
 _TOO_MANY_REQUESTS_DETAIL = "Too many requests. Try again later."
@@ -70,6 +66,7 @@ def check_storage() -> None:
 
 
 def reset_rate_limits() -> None:
-    """Test-only: clear all rate-limit state. The storage is a process-wide
-    in-memory singleton, not reset between test cases automatically."""
+    """Test-only: clear all rate-limit state. The storage is a process-wide singleton
+    (in-memory in tests, potentially a shared Redis instance elsewhere), not reset
+    between test cases automatically."""
     _storage.reset()

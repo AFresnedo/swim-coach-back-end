@@ -7,10 +7,11 @@ import os
 # isolated without requiring that container up - each test gets its own fresh DB
 # via the db_engine/db_session fixtures below anyway.
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-# Blank rather than left unset, so a developer's real .env REDIS_URL (pointing at the
-# docker-compose Redis) can't leak into the test run and force rate-limit state to
-# persist across test processes - tests always get a fresh in-process MemoryStorage.
-os.environ["REDIS_URL"] = ""
+# Explicit "memory://" rather than left unset, so a developer's real .env REDIS_URL
+# (pointing at the docker-compose Redis) can't leak into the test run and force
+# rate-limit state to persist across test processes - tests always get a fresh
+# in-process store.
+os.environ["REDIS_URL"] = "memory://"
 
 # Pinned explicitly rather than left to whatever's in a developer's local .env, so the
 # suite's rate-limit tests (which assume these exact thresholds to actually trip a 429)
