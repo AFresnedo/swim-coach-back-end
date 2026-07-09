@@ -5,7 +5,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import Response
 
 from app.config import settings
-from app.routers import auth, goals, profile, swim_times, users
+from app.routers import auth, goals, profile, stats, swim_times
 
 _docs_enabled = settings.environment != "production"
 
@@ -48,8 +48,8 @@ async def add_security_headers(request: Request, call_next: Callable[[Request], 
 app.include_router(auth.router)
 app.include_router(goals.router)
 app.include_router(profile.router)
+app.include_router(stats.router)
 app.include_router(swim_times.router)
-app.include_router(users.router)
 
 
 @app.get("/health")
