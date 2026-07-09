@@ -9,6 +9,8 @@ FastAPI backend for the SwimCoach app. Handles authentication for the
 uv sync
 cp .env.example .env  # then edit SECRET_KEY
 ln -sf ../../scripts/hooks/post-merge .git/hooks/post-merge  # auto-runs pending migrations after pull/merge
+docker compose up -d  # starts local Postgres + Redis (see docker-compose.yml)
+uv run alembic upgrade head
 ```
 
 ## Run

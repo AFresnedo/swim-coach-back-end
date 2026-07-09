@@ -2,10 +2,12 @@ import time
 
 from fastapi import HTTPException, Request, status
 from limits import parse
-from limits.storage import MemoryStorage
+from limits.storage import MemoryStorage, storage_from_string
 from limits.strategies import FixedWindowRateLimiter
 
-_storage = MemoryStorage()
+from app.config import settings
+
+_storage = storage_from_string(settings.redis_url) if settings.redis_url else MemoryStorage()
 _limiter = FixedWindowRateLimiter(_storage)
 
 _TOO_MANY_REQUESTS_DETAIL = "Too many requests. Try again later."

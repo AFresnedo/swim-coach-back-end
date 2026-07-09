@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     secret_key: str
     access_token_expire_minutes: int = 60 * 24
 
+    # None is the test-only substitute - falls back to an in-process MemoryStorage,
+    # mirroring sqlite's role for database_url above. Real local dev and production both
+    # set this to point at an actual Redis instance so counters are bounded and
+    # shared across workers/instances instead of living in the API's own heap.
+    redis_url: str | None = None
+
     # Rate limits, expressed in the `limits` library's string syntax (e.g. "5/5minutes",
     # "20/hour") consumed directly by app.rate_limit.enforce_rate_limit(). Kept
     # configurable via env vars rather than hardcoded so they can be tuned in production
