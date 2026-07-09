@@ -1,19 +1,31 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import Response
 
 from app.config import settings
+from app.database import check_connection
+from app.rate_limit import check_storage
 from app.routers import auth, goals, profile, stats, swim_times
 
 _docs_enabled = settings.environment != "production"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    check_connection()
+    check_storage()
+    yield
+
 
 app = FastAPI(
     title="SwimCoach API",
     docs_url="/docs" if _docs_enabled else None,
     redoc_url="/redoc" if _docs_enabled else None,
     openapi_url="/openapi.json" if _docs_enabled else None,
+    lifespan=lifespan,
 )
 
 # "backend" is Docker Compose's DNS name for this service (see

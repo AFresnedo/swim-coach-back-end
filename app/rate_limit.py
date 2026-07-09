@@ -41,6 +41,14 @@ def enforce_rate_limit(limit_string: str, key: str) -> None:
         )
 
 
+def check_storage() -> None:
+    """Startup check: verifies the rate-limit backing store (Redis when REDIS_URL is
+    set, in-process memory otherwise) is reachable, so a bad REDIS_URL fails loudly
+    at process boot instead of surfacing as a 500 on the first rate-limited request."""
+    if not _storage.check():
+        raise RuntimeError("Rate limit storage is not reachable")
+
+
 def reset_rate_limits() -> None:
     """Test-only: clear all rate-limit state. The storage is a process-wide
     in-memory singleton, not reset between test cases automatically."""
