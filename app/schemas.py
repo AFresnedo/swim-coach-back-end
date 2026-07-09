@@ -49,6 +49,10 @@ class UserCountOut(BaseModel):
     user_count: int
 
 
+class SwimCountOut(BaseModel):
+    swim_count: int
+
+
 class GoalIn(BaseModel):
     text: str = Field(min_length=1, max_length=2_000)
 
