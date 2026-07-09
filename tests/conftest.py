@@ -1,12 +1,21 @@
 import os
 
-# Must precede any `from app...` import. Pinned explicitly rather than left to
-# whatever's in a developer's local .env, so the suite's rate-limit tests (which
-# assume these exact thresholds to actually trip a 429) can't silently pass or
-# fail differently depending on unrelated local tuning (e.g. loosened values
-# someone set for their own Playwright/e2e runs against this same backend).
+# Everything in this block must precede any `from app...` import (pydantic-settings
+# reads these at import time).
+
+# In-memory rather than the docker-compose Postgres, so the suite runs fast and
+# isolated without requiring that container up - each test gets its own fresh DB
+# via the db_engine/db_session fixtures below anyway.
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+# Blank rather than left unset, so a developer's real .env REDIS_URL (pointing at the
+# docker-compose Redis) can't leak into the test run and force rate-limit state to
+# persist across test processes - tests always get a fresh in-process MemoryStorage.
 os.environ["REDIS_URL"] = ""
+
+# Pinned explicitly rather than left to whatever's in a developer's local .env, so the
+# suite's rate-limit tests (which assume these exact thresholds to actually trip a 429)
+# can't silently pass or fail differently depending on unrelated local tuning (e.g.
+# loosened values someone set for their own Playwright/e2e runs against this same backend).
 os.environ["LOGIN_RATE_LIMIT_PER_EMAIL"] = "5/5minutes"
 os.environ["LOGIN_RATE_LIMIT_PER_IP"] = "20/5minutes"
 os.environ["REGISTER_RATE_LIMIT_PER_IP"] = "5/hour"
