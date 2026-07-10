@@ -1,4 +1,3 @@
-from datetime import UTC
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -29,13 +28,7 @@ def get_current_user(
     if user is None:
         raise credentials_exception
 
-    cutoff = user.token_valid_after
-    # Postgres round-trips a DateTime(timezone=True) value as tz-aware, but
-    # SQLite (used in tests and local dev) always returns it naive - normalize
-    # to UTC before comparing so this doesn't raise on the SQLite path.
-    if cutoff.tzinfo is None:
-        cutoff = cutoff.replace(tzinfo=UTC)
-    if decoded.issued_at < cutoff:
+    if decoded.issued_at < user.token_valid_after:
         raise credentials_exception
 
     return user
