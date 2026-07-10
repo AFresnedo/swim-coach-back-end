@@ -20,17 +20,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # NOT NULL, backfilled via server_default (computed once in the DB rather
-    # than from this process's clock) rather than left NULL: deploying this
-    # column is meant to revoke every token that's already outstanding, not
-    # just ones issued from this point forward. The server_default is then
-    # dropped so it doesn't linger and affect new rows - new registrations get
-    # their own cutoff (registration time) via the model's default instead.
+    # Tokens issued before this time are revoked. Existing rows are backfilled
+    # with the current time via server_default; the default is left in place
+    # afterward (rather than dropped) so it also covers any insert made by an
+    # old app instance that doesn't know about this column yet, e.g. during a
+    # deploy where the migration runs before every instance is upgraded.
     op.add_column(
         "users",
         sa.Column("token_valid_after", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
     )
-    op.alter_column("users", "token_valid_after", server_default=None)
 
 
 def downgrade() -> None:
