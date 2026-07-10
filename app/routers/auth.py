@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
 
@@ -72,3 +74,13 @@ def login(request: Request, payload: UserLogin, db: DbDep) -> Token:
 @router.get("/me", response_model=UserOut)
 def read_current_user(current_user: CurrentUserDep) -> User:
     return current_user
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(current_user: CurrentUserDep, db: DbDep) -> None:
+    # Moves the user's revocation cutoff to now, invalidating every token issued
+    # up to and including the one used for this request. Sessions aren't tracked
+    # individually, so this can't target just the one token - logging out always
+    # logs out every device at once.
+    current_user.token_valid_after = datetime.now(UTC)
+    db.commit()
