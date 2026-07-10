@@ -55,5 +55,5 @@ def decode_access_token(token: str) -> DecodedToken | None:
             user_id=int(payload["sub"]),
             issued_at=datetime.fromtimestamp(payload["iat"], tz=UTC),
         )
-    except jwt.PyJWTError, KeyError, ValueError, TypeError:
+    except (jwt.PyJWTError, KeyError, ValueError, TypeError):
         return None
