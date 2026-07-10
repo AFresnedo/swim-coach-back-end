@@ -20,12 +20,15 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    user_id = decode_access_token(token)
-    if user_id is None:
+    decoded = decode_access_token(token)
+    if decoded is None:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == decoded.user_id).first()
     if user is None:
+        raise credentials_exception
+
+    if decoded.issued_at < user.token_valid_after:
         raise credentials_exception
 
     return user

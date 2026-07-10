@@ -1,9 +1,11 @@
 from collections.abc import Generator
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import create_engine
+from sqlalchemy import DateTime, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.types import TypeDecorator
 
 from app.config import settings
 
@@ -14,6 +16,23 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Base(DeclarativeBase):
     pass
+
+
+class UTCDateTime(TypeDecorator[datetime]):
+    """DateTime(timezone=True), but always reads back tz-aware.
+
+    Postgres round-trips a tz-aware value as tz-aware, but SQLite (tests, local
+    dev) has no native tz-aware storage and always hands back naive - normalize
+    here once, so no comparison site has to special-case SQLite itself.
+    """
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_result_value(self, value: datetime | None, dialect: object) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            value = value.replace(tzinfo=UTC)
+        return value
 
 
 def check_connection() -> None:
