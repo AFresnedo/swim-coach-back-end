@@ -16,6 +16,14 @@ class Base(DeclarativeBase):
     pass
 
 
+def check_connection() -> None:
+    """Startup check: opens and immediately closes a real connection, so a bad
+    DATABASE_URL (wrong host, bad credentials, unreachable server) fails loudly at
+    process boot instead of surfacing on whichever request first needs the DB."""
+    with engine.connect():
+        pass
+
+
 def get_db() -> Generator[Session]:
     db = SessionLocal()
     try:
