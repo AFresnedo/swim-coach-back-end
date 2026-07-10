@@ -226,3 +226,16 @@ def test_login_after_logout_issues_a_working_token(client, registered_user_token
     new_headers = {"Authorization": f"Bearer {login_response.json()['access_token']}"}
 
     assert client.get("/auth/me", headers=new_headers).status_code == 200
+
+
+def test_me_rejects_unexpired_token_missing_iat_claim(client, registered_user_token):
+    # Simulates a token minted before this feature shipped: has a still-valid exp
+    # but no iat at all (the pre-jwt-revoke token shape). Must be rejected purely
+    # because decode_access_token requires iat - there's no token_valid_after
+    # comparison to fall back on, since decoding fails before that check runs.
+    existing_payload = jwt.decode(registered_user_token["token"], settings.secret_key, algorithms=[ALGORITHM])
+    payload_without_iat = {"sub": existing_payload["sub"], "exp": datetime.now(UTC) + timedelta(minutes=5)}
+    token_without_iat = jwt.encode(payload_without_iat, settings.secret_key, algorithm=ALGORITHM)
+
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token_without_iat}"})
+    assert response.status_code == 401

@@ -40,6 +40,11 @@ def create_access_token(subject: int) -> str:
 
 def decode_access_token(token: str) -> DecodedToken | None:
     try:
+        # Requiring iat also revokes every token issued before this field existed:
+        # those tokens have no iat claim at all, so they fail here and never reach
+        # the token_valid_after cutoff check in get_current_user. That's a second,
+        # separate revocation path from the cutoff column - not just a precondition
+        # for reading issued_at.
         payload = jwt.decode(
             token,
             settings.secret_key,
