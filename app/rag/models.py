@@ -4,8 +4,9 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import CheckConstraint, Float, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base, UTCDateTime, nullable_sql_in_clause, sql_in_clause, utcnow
+from app.database import Base, UTCDateTime
 from app.enums import INGESTION_REASONS, QUALITY_FLAGS, SKILL_LEVELS, STROKES, TOPIC_CATEGORIES
+from app.model_utils import nullable_sql_in_clause, sql_in_clause, utcnow
 
 # voyage-4-lite's output_dimension. Changing models/dimensions later requires a
 # migration (the HNSW index and column width are baked to this size) and a full
