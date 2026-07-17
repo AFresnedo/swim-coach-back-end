@@ -3,12 +3,12 @@ from datetime import date, datetime
 from sqlalchemy import Boolean, CheckConstraint, Date, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base, UTCDateTime
+from app.database import StandardBase, UTCDateTime
 from app.enums import COURSES, DEACTIVATION_REASONS, SEXES, STROKES, UNIT_PREFERENCES
 from app.model_utils import nullable_sql_in_clause, sql_in_clause, utcnow
 
 
-class User(Base):
+class User(StandardBase):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -19,7 +19,7 @@ class User(Base):
     token_valid_after: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
-class Profile(Base):
+class Profile(StandardBase):
     __tablename__ = "profiles"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -36,7 +36,7 @@ class Profile(Base):
     )
 
 
-class Goal(Base):
+class Goal(StandardBase):
     __tablename__ = "goals"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -54,7 +54,7 @@ class Goal(Base):
     )
 
 
-class SwimTime(Base):
+class SwimTime(StandardBase):
     __tablename__ = "swim_times"
 
     id: Mapped[int] = mapped_column(primary_key=True)

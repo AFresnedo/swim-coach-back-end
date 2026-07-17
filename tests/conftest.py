@@ -30,9 +30,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from testcontainers.postgres import PostgresContainer
 
-from app.database import Base, get_db
+import app.rag.models  # noqa: F401 - registers SwimKnowledge on VectorBase.metadata
+from app.database import StandardBase, VectorBase, get_db
 from app.main import app
-from app.rag.models import RAG_TABLE_NAMES
 from app.rate_limit import reset_rate_limits
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -57,12 +57,6 @@ if _colima_socket.exists():
     os.environ.setdefault("DOCKER_HOST", f"unix://{_colima_socket}")
     os.environ.setdefault("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "/var/run/docker.sock")
 
-# SQLite has no equivalent of pgvector's `vector` column type, so tables built on
-# KnowledgeChunkMixin (see app/rag/models.py) are excluded here and exercised
-# against a real Postgres+pgvector container instead (pg_engine/pg_session below).
-_SQLITE_TABLES = [table for table in Base.metadata.tables.values() if table.name not in RAG_TABLE_NAMES]
-_RAG_TABLES = [table for table in Base.metadata.tables.values() if table.name in RAG_TABLE_NAMES]
-
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limits():
@@ -83,9 +77,9 @@ def db_engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(bind=engine, tables=_SQLITE_TABLES)
+    StandardBase.metadata.create_all(bind=engine)
     yield engine
-    Base.metadata.drop_all(bind=engine, tables=_SQLITE_TABLES)
+    StandardBase.metadata.drop_all(bind=engine)
     engine.dispose()
 
 
@@ -109,7 +103,7 @@ def pg_engine():
         engine = create_engine(container.get_connection_url())
         with engine.begin() as connection:
             connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        Base.metadata.create_all(bind=engine, tables=_RAG_TABLES)
+        VectorBase.metadata.create_all(bind=engine)
         yield engine
         engine.dispose()
 

@@ -4,7 +4,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import CheckConstraint, Float, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base, UTCDateTime
+from app.database import UTCDateTime, VectorBase
 from app.enums import INGESTION_REASONS, QUALITY_FLAGS, SKILL_LEVELS, STROKES, TOPIC_CATEGORIES
 from app.model_utils import nullable_sql_in_clause, sql_in_clause, utcnow
 
@@ -48,7 +48,7 @@ class KnowledgeChunkMixin:
     skill_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
-class SwimKnowledge(KnowledgeChunkMixin, Base):
+class SwimKnowledge(KnowledgeChunkMixin, VectorBase):
     __tablename__ = "swim_knowledge"
 
     __table_args__ = (
@@ -69,9 +69,3 @@ class SwimKnowledge(KnowledgeChunkMixin, Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
     )
-
-
-# Tables built on KnowledgeChunkMixin use pgvector's Vector column type, which has
-# no SQLite equivalent - tests/conftest.py excludes these from the SQLite fixture's
-# create_all() and exercises them against a real Postgres+pgvector container instead.
-RAG_TABLE_NAMES: frozenset[str] = frozenset({SwimKnowledge.__tablename__})
