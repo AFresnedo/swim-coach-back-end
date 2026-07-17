@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import UTCDateTime, VectorBase
 from app.enums import INGESTION_REASONS, QUALITY_FLAGS, SKILL_LEVELS, STROKES, TOPIC_CATEGORIES
-from app.model_utils import nullable_sql_in_clause, sql_in_clause, utcnow
+from app.model_utils import in_clause, nullable_in_clause, utcnow
 
 # voyage-4-lite's output_dimension. Changing models/dimensions later requires a
 # migration (the HNSW index and column width are baked to this size) and a full
@@ -52,15 +52,13 @@ class SwimKnowledge(KnowledgeChunkMixin, VectorBase):
     __tablename__ = "swim_knowledge"
 
     __table_args__ = (
+        CheckConstraint(in_clause("ingestion_reason", INGESTION_REASONS), name="ck_swim_knowledge_ingestion_reason"),
+        CheckConstraint(in_clause("quality_flag", QUALITY_FLAGS), name="ck_swim_knowledge_quality_flag"),
+        CheckConstraint(nullable_in_clause("stroke_type", STROKES), name="ck_swim_knowledge_stroke_type"),
         CheckConstraint(
-            sql_in_clause("ingestion_reason", INGESTION_REASONS), name="ck_swim_knowledge_ingestion_reason"
+            nullable_in_clause("topic_category", TOPIC_CATEGORIES), name="ck_swim_knowledge_topic_category"
         ),
-        CheckConstraint(sql_in_clause("quality_flag", QUALITY_FLAGS), name="ck_swim_knowledge_quality_flag"),
-        CheckConstraint(nullable_sql_in_clause("stroke_type", STROKES), name="ck_swim_knowledge_stroke_type"),
-        CheckConstraint(
-            nullable_sql_in_clause("topic_category", TOPIC_CATEGORIES), name="ck_swim_knowledge_topic_category"
-        ),
-        CheckConstraint(nullable_sql_in_clause("skill_level", SKILL_LEVELS), name="ck_swim_knowledge_skill_level"),
+        CheckConstraint(nullable_in_clause("skill_level", SKILL_LEVELS), name="ck_swim_knowledge_skill_level"),
         Index(
             "ix_swim_knowledge_embedding_hnsw",
             "embedding",

@@ -1,13 +1,15 @@
 from datetime import UTC, datetime
 
+from sqlalchemy import ColumnElement, column, or_
+
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-def sql_in_clause(column: str, values: tuple[str, ...]) -> str:
-    return f"{column} IN ({', '.join(f"'{value}'" for value in values)})"
+def in_clause(column_name: str, values: tuple[str, ...]) -> ColumnElement[bool]:
+    return column(column_name).in_(values)
 
 
-def nullable_sql_in_clause(column: str, values: tuple[str, ...]) -> str:
-    return f"{column} IS NULL OR {sql_in_clause(column, values)}"
+def nullable_in_clause(column_name: str, values: tuple[str, ...]) -> ColumnElement[bool]:
+    return or_(column(column_name).is_(None), in_clause(column_name, values))

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import StandardBase, UTCDateTime
 from app.enums import COURSES, DEACTIVATION_REASONS, SEXES, STROKES, UNIT_PREFERENCES
-from app.model_utils import nullable_sql_in_clause, sql_in_clause, utcnow
+from app.model_utils import in_clause, nullable_in_clause, utcnow
 
 
 class User(StandardBase):
@@ -31,8 +31,8 @@ class Profile(StandardBase):
     unit_preference: Mapped[str] = mapped_column(String(10), default="metric")
 
     __table_args__ = (
-        CheckConstraint(sql_in_clause("unit_preference", UNIT_PREFERENCES), name="ck_profiles_unit_preference"),
-        CheckConstraint(sql_in_clause("sex", SEXES), name="ck_profiles_sex"),
+        CheckConstraint(in_clause("unit_preference", UNIT_PREFERENCES), name="ck_profiles_unit_preference"),
+        CheckConstraint(in_clause("sex", SEXES), name="ck_profiles_sex"),
     )
 
 
@@ -48,7 +48,7 @@ class Goal(StandardBase):
 
     __table_args__ = (
         CheckConstraint(
-            nullable_sql_in_clause("deactivation_reason", DEACTIVATION_REASONS),
+            nullable_in_clause("deactivation_reason", DEACTIVATION_REASONS),
             name="ck_goals_deactivation_reason",
         ),
     )
@@ -70,8 +70,8 @@ class SwimTime(StandardBase):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (
-        CheckConstraint(sql_in_clause("stroke", STROKES), name="ck_swim_times_stroke"),
-        CheckConstraint(sql_in_clause("course", COURSES), name="ck_swim_times_course"),
+        CheckConstraint(in_clause("stroke", STROKES), name="ck_swim_times_stroke"),
+        CheckConstraint(in_clause("course", COURSES), name="ck_swim_times_course"),
         CheckConstraint("length > 0", name="ck_swim_times_length_positive"),
         CheckConstraint("time_seconds > 0", name="ck_swim_times_time_positive"),
         CheckConstraint("attempt_number > 0", name="ck_swim_times_attempt_number_positive"),
