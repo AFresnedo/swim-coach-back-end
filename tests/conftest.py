@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 # Everything in this block must precede any `from app...` import (pydantic-settings
 # reads these at import time).
@@ -24,15 +25,43 @@ os.environ["STATS_RATE_LIMIT_PER_IP"] = "30/minute"
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from testcontainers.postgres import PostgresContainer
 
 from app.database import Base, get_db
 from app.main import app
+from app.rag.models import RAG_TABLE_NAMES
 from app.rate_limit import reset_rate_limits
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
+
+# Colima (a Docker Desktop alternative some contributors may run locally) exposes
+# its Docker socket at a nonstandard, per-profile path instead of the conventional
+# /var/run/docker.sock. testcontainers' cleanup sidecar (Ryuk, which guarantees our
+# pg_engine container gets killed even if the test process is hard-killed rather
+# than exiting cleanly) bind-mounts the host socket into its own container and
+# expects to find it at that conventional path once mounted - on Colima that mount
+# fails outright, so Ryuk fails to start and the RAG Postgres fixture never comes
+# up. These two env vars are the documented fix: DOCKER_HOST points the Python
+# Docker client at Colima's real socket, TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE tells
+# Ryuk what path to expect once mounted. Only applied when Colima's default-profile
+# socket actually exists on disk, so this is a no-op on Docker Desktop, CI, or any
+# non-default Colima profile - and setdefault() never overrides a DOCKER_HOST a
+# developer has already set themselves. Safe to run after imports (unlike the env
+# vars above) since testcontainers only reads these lazily, when a container is
+# actually started by a test that requests pg_engine/pg_session - not at import time.
+_colima_socket = Path.home() / ".colima" / "default" / "docker.sock"
+if _colima_socket.exists():
+    os.environ.setdefault("DOCKER_HOST", f"unix://{_colima_socket}")
+    os.environ.setdefault("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "/var/run/docker.sock")
+
+# SQLite has no equivalent of pgvector's `vector` column type, so tables built on
+# KnowledgeChunkMixin (see app/rag/models.py) are excluded here and exercised
+# against a real Postgres+pgvector container instead (pg_engine/pg_session below).
+_SQLITE_TABLES = [table for table in Base.metadata.tables.values() if table.name not in RAG_TABLE_NAMES]
+_RAG_TABLES = [table for table in Base.metadata.tables.values() if table.name in RAG_TABLE_NAMES]
 
 
 @pytest.fixture(autouse=True)
@@ -54,9 +83,9 @@ def db_engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine, tables=_SQLITE_TABLES)
     yield engine
-    Base.metadata.drop_all(bind=engine)
+    Base.metadata.drop_all(bind=engine, tables=_SQLITE_TABLES)
     engine.dispose()
 
 
@@ -68,6 +97,39 @@ def db_session(db_engine):
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture(scope="session")
+def pg_engine():
+    # Session-scoped: one throwaway pgvector-enabled container for the whole test
+    # run, not per test - container startup cost is real, and pg_session below
+    # gives each test its own rolled-back transaction on top of this shared engine,
+    # so tests still can't see each other's data.
+    with PostgresContainer("pgvector/pgvector:pg17") as container:
+        engine = create_engine(container.get_connection_url())
+        with engine.begin() as connection:
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        Base.metadata.create_all(bind=engine, tables=_RAG_TABLES)
+        yield engine
+        engine.dispose()
+
+
+@pytest.fixture
+def pg_session(pg_engine):
+    connection = pg_engine.connect()
+    transaction = connection.begin()
+    session_local = sessionmaker(autocommit=False, autoflush=False, bind=connection)
+    session = session_local()
+    try:
+        yield session
+    finally:
+        session.close()
+        # A failed commit (e.g. a CheckConstraint violation) already deassociates
+        # the transaction internally - rolling back again would just be a no-op
+        # SAWarning, not a real double-rollback bug.
+        if transaction.is_active:
+            transaction.rollback()
+        connection.close()
 
 
 @pytest.fixture

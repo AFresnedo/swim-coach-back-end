@@ -35,6 +35,18 @@ class UTCDateTime(TypeDecorator[datetime]):
         return value
 
 
+def utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
+def sql_in_clause(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN ({', '.join(f"'{value}'" for value in values)})"
+
+
+def nullable_sql_in_clause(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IS NULL OR {sql_in_clause(column, values)}"
+
+
 def check_connection() -> None:
     """Startup check: opens and immediately closes a real connection, so a bad
     DATABASE_URL (wrong host, bad credentials, unreachable server) fails loudly at
