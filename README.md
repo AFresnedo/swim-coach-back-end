@@ -86,3 +86,8 @@ the same branch cancels any still-running run for that branch, so only the lates
 
 [Dependabot](.github/dependabot.yml) opens PRs weekly for outdated Python dependencies and
 outdated GitHub Actions versions; they go through the same CI gate as any other PR.
+
+## License
+
+All rights reserved — see [LICENSE](LICENSE). This repo is public for reference only;
+no permission is granted to use, copy, modify, or distribute this code.
