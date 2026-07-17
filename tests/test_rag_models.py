@@ -48,15 +48,15 @@ def test_insert_and_read_back_round_trips_all_fields(pg_session):
 
 
 def test_cosine_distance_orders_by_similarity(pg_session):
-    near = _make_chunk(chunk_text="near", embedding=_embedding(seed=1.0))
-    far = _make_chunk(chunk_text="far", embedding=_embedding(seed=-1.0))
-    pg_session.add_all([far, near])
+    query_vector = _embedding(seed=1.0)
+    matching_chunk = _make_chunk(chunk_text="matching", embedding=query_vector)
+    opposite_chunk = _make_chunk(chunk_text="opposite", embedding=[-value for value in query_vector])
+    pg_session.add_all([opposite_chunk, matching_chunk])
     pg_session.commit()
 
-    query_vector = _embedding(seed=1.0)
     results = pg_session.query(SwimKnowledge).order_by(SwimKnowledge.embedding.cosine_distance(query_vector)).all()
 
-    assert [row.chunk_text for row in results] == ["near", "far"]
+    assert [row.chunk_text for row in results] == ["matching", "opposite"]
 
 
 @pytest.mark.parametrize(
