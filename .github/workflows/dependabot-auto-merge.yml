@@ -17,6 +17,18 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
+      - name: Label PR with semver update type
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          case "$UPDATE_TYPE" in
+            version-update:semver-major) gh pr edit "$PR_URL" --add-label "semver:major" ;;
+            version-update:semver-minor) gh pr edit "$PR_URL" --add-label "semver:minor" ;;
+            version-update:semver-patch) gh pr edit "$PR_URL" --add-label "semver:patch" ;;
+          esac
+
       - name: Enable auto-merge for patch/minor bumps
         if: |
           steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
