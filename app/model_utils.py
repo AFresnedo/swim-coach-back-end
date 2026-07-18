@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import Enum
+from sqlalchemy import ColumnElement, Enum, column, or_
 
 
 # This function allows us to avoid freezing the timestamp when used as a mapped_column
@@ -24,3 +24,11 @@ def enum_column(*values: str, name: str, length: int) -> Enum:
     no-op.
     """
     return Enum(*values, name=name, native_enum=False, create_constraint=True, length=length)
+
+
+def in_clause(column_name: str, values: tuple[str, ...]) -> ColumnElement[bool]:
+    return column(column_name).in_(values)
+
+
+def nullable_in_clause(column_name: str, values: tuple[str, ...]) -> ColumnElement[bool]:
+    return or_(column(column_name).is_(None), in_clause(column_name, values))

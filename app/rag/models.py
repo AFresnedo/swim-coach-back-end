@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import ClassVar
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Float, Index, Text
-from sqlalchemy.orm import Mapped, declared_attr, mapped_column
+from sqlalchemy import CheckConstraint, Float, Index, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import UTCDateTime, VectorBase
 from app.enums import (
@@ -18,7 +17,7 @@ from app.enums import (
     StrokeLiteral,
     TopicCategoryLiteral,
 )
-from app.model_utils import enum_column, utcnow
+from app.model_utils import in_clause, nullable_in_clause, utcnow
 
 # voyage-4-lite's output_dimension. Changing models/dimensions later requires a
 # migration (the HNSW index and column width are baked to this size) and a full
@@ -34,20 +33,17 @@ class KnowledgeChunkMixin:
     why (mixing corpora degrades ANN index quality, and filtered vector search
     over a shared index is a known hard tradeoff). Each domain (SwimKnowledge
     today, a future recovery-plan KB, etc.) gets its own table built from this
-    mixin, with its own HNSW index in __table_args__.
+    mixin, with its own CheckConstraints and HNSW index in __table_args__.
 
-    The enum-typed columns are declared_attr so their CHECK constraint names
-    (via enum_column) derive from each subclass's own __tablename__ instead of
-    being hardcoded here - a plain `col: Mapped[X] = mapped_column(enum_column(...,
-    name="ck_swim_knowledge_..."))` would bake the swim_knowledge name into the
-    mixin itself, and a second domain table built from this mixin would silently
-    inherit those same misnamed constraints.
+    The enum-typed columns here are deliberately plain String columns, not
+    SQLAlchemy Enum types - an Enum's CHECK constraint is generated from the
+    column's type object, which is only built once, in this mixin, with no
+    per-subclass name to give it. Each concrete class instead declares its own
+    named CheckConstraint in __table_args__, exactly like the constraint names
+    already do (ck_swim_knowledge_*) - so a second domain table built from this
+    mixin defines its own correctly-named constraints instead of silently
+    inheriting swim_knowledge's.
     """
-
-    # Declared, not assigned - each concrete subclass provides the real value.
-    # Only here so the declared_attr methods below can reference cls.__tablename__
-    # without pyright flagging it as unknown on this plain (non-DeclarativeBase) mixin.
-    __tablename__: ClassVar[str]
 
     id: Mapped[int] = mapped_column(primary_key=True)
     chunk_text: Mapped[str] = mapped_column(Text)
@@ -58,48 +54,31 @@ class KnowledgeChunkMixin:
     source_url: Mapped[str] = mapped_column(Text)
     source_query: Mapped[str] = mapped_column(Text)
     ingested_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
-
-    @declared_attr
-    def ingestion_reason(cls) -> Mapped[IngestionReasonLiteral]:  # noqa: N805
-        return mapped_column(
-            enum_column(*INGESTION_REASONS, name=f"ck_{cls.__tablename__}_ingestion_reason", length=30)
-        )
-
+    ingestion_reason: Mapped[IngestionReasonLiteral] = mapped_column(String(30))
     quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-
-    @declared_attr
-    def quality_flag(cls) -> Mapped[QualityFlagLiteral]:  # noqa: N805
-        return mapped_column(enum_column(*QUALITY_FLAGS, name=f"ck_{cls.__tablename__}_quality_flag", length=10))
-
+    quality_flag: Mapped[QualityFlagLiteral] = mapped_column(String(10))
     quality_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Classification - nullable, forward-compat for the future hybrid-retrieval
     # ticket's metadata routing. topic_category/skill_level are a provisional
     # starter taxonomy, not final - see project memory before building the
     # ingestion prompt that populates them.
-    @declared_attr
-    def stroke_type(cls) -> Mapped[StrokeLiteral | None]:  # noqa: N805
-        return mapped_column(
-            enum_column(*STROKES, name=f"ck_{cls.__tablename__}_stroke_type", length=20), nullable=True
-        )
-
-    @declared_attr
-    def topic_category(cls) -> Mapped[TopicCategoryLiteral | None]:  # noqa: N805
-        return mapped_column(
-            enum_column(*TOPIC_CATEGORIES, name=f"ck_{cls.__tablename__}_topic_category", length=30), nullable=True
-        )
-
-    @declared_attr
-    def skill_level(cls) -> Mapped[SkillLevelLiteral | None]:  # noqa: N805
-        return mapped_column(
-            enum_column(*SKILL_LEVELS, name=f"ck_{cls.__tablename__}_skill_level", length=20), nullable=True
-        )
+    stroke_type: Mapped[StrokeLiteral | None] = mapped_column(String(20), nullable=True)
+    topic_category: Mapped[TopicCategoryLiteral | None] = mapped_column(String(30), nullable=True)
+    skill_level: Mapped[SkillLevelLiteral | None] = mapped_column(String(20), nullable=True)
 
 
 class SwimKnowledge(KnowledgeChunkMixin, VectorBase):
     __tablename__ = "swim_knowledge"
 
     __table_args__ = (
+        CheckConstraint(in_clause("ingestion_reason", INGESTION_REASONS), name="ck_swim_knowledge_ingestion_reason"),
+        CheckConstraint(in_clause("quality_flag", QUALITY_FLAGS), name="ck_swim_knowledge_quality_flag"),
+        CheckConstraint(nullable_in_clause("stroke_type", STROKES), name="ck_swim_knowledge_stroke_type"),
+        CheckConstraint(
+            nullable_in_clause("topic_category", TOPIC_CATEGORIES), name="ck_swim_knowledge_topic_category"
+        ),
+        CheckConstraint(nullable_in_clause("skill_level", SKILL_LEVELS), name="ck_swim_knowledge_skill_level"),
         Index(
             "ix_swim_knowledge_embedding_hnsw",
             "embedding",
