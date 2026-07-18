@@ -45,7 +45,6 @@ jobs:
       - name: Run migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/swimcoach
-          SECRET_KEY: ci-only-placeholder-not-a-real-secret
         run: uv run alembic upgrade head
 
   test:
@@ -84,4 +83,6 @@ jobs:
       - name: Run tests
         env:
           SECRET_KEY: ci-only-placeholder-not-a-real-secret
+          ANTHROPIC_API_KEY: ci-only-placeholder-not-a-real-key
+          VOYAGE_API_KEY: ci-only-placeholder-not-a-real-key
         run: uv run pytest -v
