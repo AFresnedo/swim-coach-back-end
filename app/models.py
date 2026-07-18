@@ -4,7 +4,18 @@ from sqlalchemy import Boolean, CheckConstraint, Date, Float, ForeignKey, Index,
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import StandardBase, UTCDateTime
-from app.enums import COURSES, DEACTIVATION_REASONS, SEXES, STROKES, UNIT_PREFERENCES
+from app.enums import (
+    COURSES,
+    DEACTIVATION_REASONS,
+    SEXES,
+    STROKES,
+    UNIT_PREFERENCES,
+    CourseLiteral,
+    DeactivationReasonLiteral,
+    SexLiteral,
+    StrokeLiteral,
+    UnitPreferenceLiteral,
+)
 from app.model_utils import in_clause, nullable_in_clause, utcnow
 
 
@@ -27,8 +38,8 @@ class Profile(StandardBase):
     age: Mapped[int] = mapped_column(Integer)
     height_cm: Mapped[float] = mapped_column(Float)
     weight_kg: Mapped[float] = mapped_column(Float)
-    sex: Mapped[str] = mapped_column(String(20))
-    unit_preference: Mapped[str] = mapped_column(String(10), default="metric")
+    sex: Mapped[SexLiteral] = mapped_column(String(20))
+    unit_preference: Mapped[UnitPreferenceLiteral] = mapped_column(String(10), default="metric")
 
     __table_args__ = (
         CheckConstraint(in_clause("unit_preference", UNIT_PREFERENCES), name="ck_profiles_unit_preference"),
@@ -43,7 +54,7 @@ class Goal(StandardBase):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     text: Mapped[str] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    deactivation_reason: Mapped[str | None] = mapped_column(String(25), nullable=True)
+    deactivation_reason: Mapped[DeactivationReasonLiteral | None] = mapped_column(String(25), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (
@@ -60,8 +71,8 @@ class SwimTime(StandardBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     date: Mapped[date] = mapped_column(Date)
-    stroke: Mapped[str] = mapped_column(String(20))
-    course: Mapped[str] = mapped_column(String(3))
+    stroke: Mapped[StrokeLiteral] = mapped_column(String(20))
+    course: Mapped[CourseLiteral] = mapped_column(String(3))
     length: Mapped[int] = mapped_column(Integer)
     attempt_number: Mapped[int] = mapped_column(Integer, default=1)
     time_seconds: Mapped[float] = mapped_column(Float)

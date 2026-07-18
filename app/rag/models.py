@@ -5,7 +5,18 @@ from sqlalchemy import CheckConstraint, Float, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import UTCDateTime, VectorBase
-from app.enums import INGESTION_REASONS, QUALITY_FLAGS, SKILL_LEVELS, STROKES, TOPIC_CATEGORIES
+from app.enums import (
+    INGESTION_REASONS,
+    QUALITY_FLAGS,
+    SKILL_LEVELS,
+    STROKES,
+    TOPIC_CATEGORIES,
+    IngestionReasonLiteral,
+    QualityFlagLiteral,
+    SkillLevelLiteral,
+    StrokeLiteral,
+    TopicCategoryLiteral,
+)
 from app.model_utils import in_clause, nullable_in_clause, utcnow
 
 # voyage-4-lite's output_dimension. Changing models/dimensions later requires a
@@ -34,18 +45,18 @@ class KnowledgeChunkMixin:
     source_url: Mapped[str] = mapped_column(Text)
     source_query: Mapped[str] = mapped_column(Text)
     ingested_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
-    ingestion_reason: Mapped[str] = mapped_column(String(30))
+    ingestion_reason: Mapped[IngestionReasonLiteral] = mapped_column(String(30))
     quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    quality_flag: Mapped[str] = mapped_column(String(10))
+    quality_flag: Mapped[QualityFlagLiteral] = mapped_column(String(10))
     quality_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Classification - nullable, forward-compat for the future hybrid-retrieval
     # ticket's metadata routing. topic_category/skill_level are a provisional
     # starter taxonomy, not final - see project memory before building the
     # ingestion prompt that populates them.
-    stroke_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    topic_category: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    skill_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    stroke_type: Mapped[StrokeLiteral | None] = mapped_column(String(20), nullable=True)
+    topic_category: Mapped[TopicCategoryLiteral | None] = mapped_column(String(30), nullable=True)
+    skill_level: Mapped[SkillLevelLiteral | None] = mapped_column(String(20), nullable=True)
 
 
 class SwimKnowledge(KnowledgeChunkMixin, VectorBase):
