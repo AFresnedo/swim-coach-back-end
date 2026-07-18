@@ -1,36 +1,36 @@
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 from sqlalchemy import Boolean, CheckConstraint, Date, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base, UTCDateTime
-from app.enums import COURSES, DEACTIVATION_REASONS, SEXES, STROKES, UNIT_PREFERENCES
+from app.database import StandardBase, UTCDateTime
+from app.enums import (
+    COURSES,
+    DEACTIVATION_REASONS,
+    SEXES,
+    STROKES,
+    UNIT_PREFERENCES,
+    CourseLiteral,
+    DeactivationReasonLiteral,
+    SexLiteral,
+    StrokeLiteral,
+    UnitPreferenceLiteral,
+)
+from app.model_utils import enum_column, utcnow
 
 
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
-
-
-def _sql_in_clause(column: str, values: tuple[str, ...]) -> str:
-    return f"{column} IN ({', '.join(f"'{value}'" for value in values)})"
-
-
-def _nullable_sql_in_clause(column: str, values: tuple[str, ...]) -> str:
-    return f"{column} IS NULL OR {_sql_in_clause(column, values)}"
-
-
-class User(Base):
+class User(StandardBase):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=_utcnow)
-    token_valid_after: Mapped[datetime] = mapped_column(UTCDateTime, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    token_valid_after: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
-class Profile(Base):
+class Profile(StandardBase):
     __tablename__ = "profiles"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -38,51 +38,41 @@ class Profile(Base):
     age: Mapped[int] = mapped_column(Integer)
     height_cm: Mapped[float] = mapped_column(Float)
     weight_kg: Mapped[float] = mapped_column(Float)
-    sex: Mapped[str] = mapped_column(String(20))
-    unit_preference: Mapped[str] = mapped_column(String(10), default="metric")
-
-    __table_args__ = (
-        CheckConstraint(_sql_in_clause("unit_preference", UNIT_PREFERENCES), name="ck_profiles_unit_preference"),
-        CheckConstraint(_sql_in_clause("sex", SEXES), name="ck_profiles_sex"),
+    sex: Mapped[SexLiteral] = mapped_column(enum_column(*SEXES, name="ck_profiles_sex", length=20))
+    unit_preference: Mapped[UnitPreferenceLiteral] = mapped_column(
+        enum_column(*UNIT_PREFERENCES, name="ck_profiles_unit_preference", length=10), default="metric"
     )
 
 
-class Goal(Base):
+class Goal(StandardBase):
     __tablename__ = "goals"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     text: Mapped[str] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    deactivation_reason: Mapped[str | None] = mapped_column(String(25), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=_utcnow)
-
-    __table_args__ = (
-        CheckConstraint(
-            _nullable_sql_in_clause("deactivation_reason", DEACTIVATION_REASONS),
-            name="ck_goals_deactivation_reason",
-        ),
+    deactivation_reason: Mapped[DeactivationReasonLiteral | None] = mapped_column(
+        enum_column(*DEACTIVATION_REASONS, name="ck_goals_deactivation_reason", length=25), nullable=True
     )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
-class SwimTime(Base):
+class SwimTime(StandardBase):
     __tablename__ = "swim_times"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     date: Mapped[date] = mapped_column(Date)
-    stroke: Mapped[str] = mapped_column(String(20))
-    course: Mapped[str] = mapped_column(String(3))
+    stroke: Mapped[StrokeLiteral] = mapped_column(enum_column(*STROKES, name="ck_swim_times_stroke", length=20))
+    course: Mapped[CourseLiteral] = mapped_column(enum_column(*COURSES, name="ck_swim_times_course", length=3))
     length: Mapped[int] = mapped_column(Integer)
     attempt_number: Mapped[int] = mapped_column(Integer, default=1)
     time_seconds: Mapped[float] = mapped_column(Float)
     is_official: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (
-        CheckConstraint(_sql_in_clause("stroke", STROKES), name="ck_swim_times_stroke"),
-        CheckConstraint(_sql_in_clause("course", COURSES), name="ck_swim_times_course"),
         CheckConstraint("length > 0", name="ck_swim_times_length_positive"),
         CheckConstraint("time_seconds > 0", name="ck_swim_times_time_positive"),
         CheckConstraint("attempt_number > 0", name="ck_swim_times_attempt_number_positive"),

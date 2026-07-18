@@ -3,9 +3,10 @@ from logging.config import fileConfig
 from sqlalchemy import create_engine, pool
 
 import app.models  # noqa: F401
+import app.rag.models  # noqa: F401
 from alembic import context
 from app.config import settings
-from app.database import Base
+from app.database import StandardBase, VectorBase
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
@@ -13,7 +14,7 @@ config.set_main_option("sqlalchemy.url", settings.database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = Base.metadata
+target_metadata = [StandardBase.metadata, VectorBase.metadata]
 
 
 def run_migrations_offline() -> None:

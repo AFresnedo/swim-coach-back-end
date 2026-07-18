@@ -14,7 +14,28 @@ engine = create_engine(settings.database_url, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-class Base(DeclarativeBase):
+class StandardBase(DeclarativeBase):
+    """Declarative base for tables built from standard SQL types only.
+
+    Runnable against any backend, including the SQLite test fixture. Tables
+    that need a backend-specific type (e.g. pgvector's Vector column) belong
+    on VectorBase instead - the split is by column shape, not by feature/domain,
+    so a plain relational table that happens to support a RAG feature still
+    belongs here.
+    """
+
+    pass
+
+
+class VectorBase(DeclarativeBase):
+    """Declarative base for tables that require the pgvector extension.
+
+    Kept separate from StandardBase so pgvector-dependent tables (Vector
+    columns, HNSW indexes) are structurally excluded from any sweep of
+    StandardBase.metadata - e.g. the SQLite test fixture - without needing a
+    manually maintained table-name allowlist.
+    """
+
     pass
 
 
