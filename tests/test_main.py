@@ -1,23 +1,23 @@
 from app.config import settings
-from app.main import create_app
+from app.main import DocsUrls, _docs_urls, create_app
 
 
-def _docs_urls(environment: str | None) -> tuple[str | None, str | None, str | None]:
-    app_settings = settings if environment is None else settings.model_copy(update={"environment": environment})
-    app = create_app(app_settings)
-    return app.docs_url, app.redoc_url, app.openapi_url
+def test_docs_urls_enabled_for_development():
+    assert _docs_urls("development") == DocsUrls("/docs", "/redoc", "/openapi.json")
 
 
-def test_docs_enabled_by_default():
-    assert _docs_urls(None) == ("/docs", "/redoc", "/openapi.json")
+def test_docs_urls_disabled_for_production():
+    assert _docs_urls("production") == DocsUrls(None, None, None)
 
 
-def test_docs_enabled_in_development():
-    assert _docs_urls("development") == ("/docs", "/redoc", "/openapi.json")
-
-
-def test_docs_disabled_in_production():
-    assert _docs_urls("production") == (None, None, None)
+def test_create_app_wires_docs_urls_from_settings():
+    app = create_app()
+    expected = _docs_urls(settings.environment)
+    assert (app.docs_url, app.redoc_url, app.openapi_url) == (
+        expected.docs_url,
+        expected.redoc_url,
+        expected.openapi_url,
+    )
 
 
 def test_trusted_host_allows_backend(client):
