@@ -22,14 +22,13 @@ class RetrievedChunk:
 
 def fetch_active_goals(db: Session, user_id: int) -> list[Goal]:
     return (
-        db.query(Goal)
-        .filter(Goal.user_id == user_id, Goal.is_active.is_(True))
-        .order_by(Goal.created_at.desc())
-        .all()
+        db.query(Goal).filter(Goal.user_id == user_id, Goal.is_active.is_(True)).order_by(Goal.created_at.desc()).all()
     )
 
 
-def search_swim_knowledge(db: Session, query_vector: list[float], *, top_k: int = DEFAULT_TOP_K) -> list[RetrievedChunk]:
+def search_swim_knowledge(
+    db: Session, query_vector: list[float], *, top_k: int = DEFAULT_TOP_K
+) -> list[RetrievedChunk]:
     """Cosine-search SwimKnowledge for the top_k chunks nearest query_vector,
     ordered by similarity (best match first).
 
