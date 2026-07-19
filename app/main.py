@@ -1,7 +1,5 @@
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
-from typing import Literal
 
 from fastapi import FastAPI, Request
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -9,6 +7,7 @@ from starlette.responses import Response
 
 from app.config import Settings, settings
 from app.database import check_connection
+from app.docs import docs_urls
 from app.rate_limit import check_storage
 from app.routers import auth, goals, profile, stats, swim_times
 
@@ -20,28 +19,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-@dataclass(frozen=True)
-class DocsUrls:
-    docs_url: str | None
-    redoc_url: str | None
-    openapi_url: str | None
-
-
-def _docs_urls(environment: Literal["development", "production"]) -> DocsUrls:
-    # The full, uncurated OpenAPI schema is never meant to be reachable in
-    # production (see Settings.environment) - a future public API's docs would
-    # be a separate, deliberately curated surface with its own setting, not
-    # this flag repurposed.
-    enabled = environment != "production"
-    return DocsUrls(
-        docs_url="/docs" if enabled else None,
-        redoc_url="/redoc" if enabled else None,
-        openapi_url="/openapi.json" if enabled else None,
-    )
-
-
 def create_app(settings: Settings = settings) -> FastAPI:
-    docs = _docs_urls(settings.environment)
+    docs = docs_urls(settings.environment)
 
     app = FastAPI(
         title="SwimCoach API",
