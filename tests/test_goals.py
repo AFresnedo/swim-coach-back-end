@@ -1,3 +1,8 @@
+from app.schemas import GoalIn
+
+MAX_GOAL_TEXT_LENGTH = GoalIn.model_json_schema()["properties"]["text"]["maxLength"]
+
+
 def test_create_goal(client, auth_headers):
     response = client.post("/goals", json={"text": "Swim a sub-1:00 100m free"}, headers=auth_headers)
     assert response.status_code == 201
@@ -18,7 +23,7 @@ def test_create_goal_blank_text_rejected(client, auth_headers):
 
 
 def test_create_goal_text_too_long_rejected(client, auth_headers):
-    response = client.post("/goals", json={"text": "a" * 2001}, headers=auth_headers)
+    response = client.post("/goals", json={"text": "a" * (MAX_GOAL_TEXT_LENGTH + 1)}, headers=auth_headers)
     assert response.status_code == 422
 
 
