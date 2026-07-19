@@ -5,7 +5,7 @@ from app.rag.training import ask_training
 
 
 def _chunk(similarity: float):
-    return RetrievedChunk(chunk=object(), similarity=similarity)
+    return RetrievedChunk(chunk=MagicMock(source_url="https://example.com"), similarity=similarity)
 
 
 def test_ask_training_answers_from_knowledge_base_on_hit():
