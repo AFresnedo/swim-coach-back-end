@@ -99,10 +99,15 @@ def pg_engine():
     # run, not per test - container startup cost is real, and pg_session below
     # gives each test its own rolled-back transaction on top of this shared engine,
     # so tests still can't see each other's data.
+    #
+    # Unlike db_engine (SQLite, StandardBase only), this one gets both bases -
+    # deliberate, not an oversight, so a pg_session-backed test client below can
+    # authenticate a user and query SwimKnowledge in the same request.
     with PostgresContainer("pgvector/pgvector:pg17") as container:
         engine = create_engine(container.get_connection_url())
         with engine.begin() as connection:
             connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        StandardBase.metadata.create_all(bind=engine)
         VectorBase.metadata.create_all(bind=engine)
         yield engine
         engine.dispose()
@@ -148,3 +153,30 @@ def registered_user_token(client):
 @pytest.fixture
 def auth_headers(registered_user_token):
     return {"Authorization": f"Bearer {registered_user_token['token']}"}
+
+
+@pytest.fixture
+def pg_client(pg_session):
+    # Mirrors `client` above, but backed by pg_session (real Postgres, both
+    # bases present) instead of the SQLite db_session - for endpoints that
+    # need a pgvector table (e.g. SwimKnowledge) alongside authentication.
+    def override_get_db():
+        yield pg_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def pg_registered_user_token(pg_client):
+    payload = {"name": "Test User", "email": "test@example.com", "password": "supersecret123"}
+    response = pg_client.post("/auth/register", json=payload)
+    assert response.status_code == 201
+    return {"token": response.json()["access_token"], "email": payload["email"], "password": payload["password"]}
+
+
+@pytest.fixture
+def pg_auth_headers(pg_registered_user_token):
+    return {"Authorization": f"Bearer {pg_registered_user_token['token']}"}
