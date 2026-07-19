@@ -9,7 +9,7 @@ from app.config import Settings, settings
 from app.database import check_connection
 from app.docs import docs_urls
 from app.rate_limit import check_storage
-from app.routers import auth, goals, profile, stats, swim_times
+from app.routers import auth, goals, profile, stats, swim_times, training
 
 
 @asynccontextmanager
@@ -62,6 +62,7 @@ def create_app(settings: Settings = settings) -> FastAPI:
     app.include_router(profile.router)
     app.include_router(stats.router)
     app.include_router(swim_times.router)
+    app.include_router(training.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:
