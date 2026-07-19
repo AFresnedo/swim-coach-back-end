@@ -29,3 +29,11 @@ class RagSettings(BaseSettings):
     # Ingestion guardrail: caps how many web-search results get chunked/embedded/
     # stored per fallback trigger (card step 4 fetches "the top 1-2 results").
     max_web_ingestions_per_query: int = Field(default=2, ge=1)
+
+    # Step 3b's miss-rescue question rewrite. A separate knob from coach_model,
+    # not the same setting reused - the rescue only pays for itself economically
+    # if this stays on whichever model is cheapest, independent of what
+    # coach_model is configured to answer with. Today's cheapest model happens
+    # to be Haiku 4.5; that will change, which is exactly why this is a setting
+    # instead of a hardcoded model id.
+    sharpen_model: Literal["claude-haiku-4-5"] = "claude-haiku-4-5"
