@@ -2,11 +2,16 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
+from limits import parse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.security import ALGORITHM
+
+REGISTER_LIMIT_PER_IP = parse(settings.register_rate_limit_per_ip).amount
+LOGIN_LIMIT_PER_EMAIL = parse(settings.login_rate_limit_per_email).amount
+LOGIN_LIMIT_PER_IP = parse(settings.login_rate_limit_per_ip).amount
 
 
 def test_register_success(client):
@@ -98,7 +103,7 @@ def test_register_reraises_unrelated_integrity_error(client, monkeypatch):
 
 
 def test_register_rate_limit_exceeded(client):
-    for i in range(5):
+    for i in range(REGISTER_LIMIT_PER_IP):
         response = client.post(
             "/auth/register",
             json={"name": f"User{i}", "email": f"rl-register-{i}@example.com", "password": "supersecret123"},
@@ -116,7 +121,7 @@ def test_register_rate_limit_exceeded(client):
 
 def test_login_rate_limit_per_email_exceeded(client, registered_user_token):
     email = registered_user_token["email"]
-    for _ in range(5):
+    for _ in range(LOGIN_LIMIT_PER_EMAIL):
         response = client.post("/auth/login", json={"email": email, "password": "wrongpassword"})
         assert response.status_code == 401
 
@@ -128,7 +133,7 @@ def test_login_rate_limit_per_email_exceeded(client, registered_user_token):
 
 def test_login_rate_limit_per_email_is_independent_per_email(client, registered_user_token):
     email = registered_user_token["email"]
-    for _ in range(5):
+    for _ in range(LOGIN_LIMIT_PER_EMAIL):
         client.post("/auth/login", json={"email": email, "password": "wrongpassword"})
     blocked = client.post("/auth/login", json={"email": email, "password": "wrongpassword"})
     assert blocked.status_code == 429
@@ -142,7 +147,7 @@ def test_login_rate_limit_per_email_is_independent_per_email(client, registered_
 def test_login_rate_limit_per_ip_exceeded(client):
     # Use a distinct email per call so the per-email limit (5/5minutes) never
     # trips first - this isolates testing the broader per-IP limit (20/5minutes).
-    for i in range(20):
+    for i in range(LOGIN_LIMIT_PER_IP):
         response = client.post("/auth/login", json={"email": f"rl-ip-{i}@example.com", "password": "whatever123"})
         assert response.status_code == 401
 

@@ -1,3 +1,7 @@
+from limits import parse
+
+from app.config import settings
+
 VALID_SWIM_TIME = {
     "date": "2026-07-01",
     "stroke": "freestyle",
@@ -8,6 +12,8 @@ VALID_SWIM_TIME = {
     "is_official": False,
     "notes": None,
 }
+
+STATS_LIMIT_PER_IP = parse(settings.stats_rate_limit_per_ip).amount
 
 
 def test_users_count_zero(client):
@@ -54,7 +60,7 @@ def test_swims_count_does_not_require_auth(client):
 
 
 def test_users_count_rate_limit_exceeded(client):
-    for _ in range(30):
+    for _ in range(STATS_LIMIT_PER_IP):
         response = client.get("/stats/users-count")
         assert response.status_code == 200
 
@@ -65,7 +71,7 @@ def test_users_count_rate_limit_exceeded(client):
 
 
 def test_swims_count_rate_limit_exceeded(client):
-    for _ in range(30):
+    for _ in range(STATS_LIMIT_PER_IP):
         response = client.get("/stats/swims-count")
         assert response.status_code == 200
 
