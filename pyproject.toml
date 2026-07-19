@@ -15,6 +15,7 @@ dependencies = [
     "psycopg2-binary>=2.9.12",
     "pydantic-settings>=2.14.2",
     "pyjwt>=2.13.0",
+    "redis>=7.4.1",
     "sqlalchemy>=2.0.51",
     "voyageai>=0.5.0",
     "uvicorn[standard]>=0.51.0",
