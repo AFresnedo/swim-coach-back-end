@@ -24,6 +24,14 @@ This contributor has a user-level Claude Code skill, `options-before-precedent` 
 
 This is a serious, deliberate engineering effort, not a move-fast-and-skip-review project. Default to more discussion and more review passes, not less — even when nothing has gone wrong yet. Don't treat thoroughness as overhead to minimize; surface ambiguous calls for discussion rather than quietly resolving them solo.
 
+## Answer review questions directly
+
+When asked a clarifying or double-checking question mid-implementation, answer it directly and plainly. Don't frame the answer around how settled the plan is, how far along implementation has gotten, or whether the question was "necessary" — treat it as a normal part of ongoing code review, not friction to get past, regardless of how much work already happened before the question was asked.
+
+## Surface scope mismatches
+
+If your own implementation instincts imply scope beyond what was explicitly asked for or written in a ticket (a new capability, not just an implementation detail), raise that mismatch for discussion at the time — don't silently decide solo whether to keep the extra scope or trim back to the literal ask. Concrete trigger: if you catch yourself writing code that only makes sense if some capability exists, and that capability wasn't actually requested, stop and name the gap out loud before choosing to build it or cut it.
+
 ## Clean code, not just correct code
 
 Code that works correctly can still have a genuine, articulable maintainability problem — mixed concerns, domain-specific logic sitting in a general-purpose file, a missing single-responsibility split — that will bite the next person who builds on it. When asked to assess whether code is good or where something belongs, "it's correct" is not the same bar as "it's clean" — a real maintainability issue deserves to be named, not waved off because nothing is currently broken.
