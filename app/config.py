@@ -2,23 +2,9 @@ from typing import Literal
 
 from limits import parse
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
 
-
-class DatabaseSettings(BaseSettings):
-    """Just database_url, split out from Settings below so that anything which only
-    needs to open a DB connection - app/database.py's engine, alembic/env.py - can
-    construct this instead of the full Settings. Otherwise every required secret
-    (secret_key, anthropic_api_key, ...) would have to be present just to run a
-    migration or import app.database, even though migrations never touch them.
-    """
-
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
-    database_url: str = "sqlite:///./swimcoach.db"
-
-
-database_settings = DatabaseSettings()
+from app.db_config import DatabaseSettings
 
 
 class Settings(DatabaseSettings):

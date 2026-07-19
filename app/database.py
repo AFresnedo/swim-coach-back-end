@@ -7,7 +7,7 @@ from sqlalchemy import DateTime, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.types import TypeDecorator
 
-from app.config import database_settings
+from app.db_config import database_settings
 
 connect_args = {"check_same_thread": False} if database_settings.database_url.startswith("sqlite") else {}
 engine = create_engine(database_settings.database_url, connect_args=connect_args)

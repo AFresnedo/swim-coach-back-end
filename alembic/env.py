@@ -5,8 +5,8 @@ from sqlalchemy import create_engine, pool
 import app.models  # noqa: F401
 import app.rag.models  # noqa: F401
 from alembic import context
-from app.config import database_settings
 from app.database import StandardBase, VectorBase
+from app.db_config import database_settings
 
 config = context.config
 config.set_main_option("sqlalchemy.url", database_settings.database_url)
