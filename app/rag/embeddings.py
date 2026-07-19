@@ -29,4 +29,8 @@ def embed_query(text: str) -> list[float]:
         input_type="query",
         output_dimension=EMBEDDING_DIMENSION,
     )
-    return result.embeddings[0]
+    # embed()'s return type is typed as float|int elements (output_dtype can
+    # request quantized int8/uint8 output) - we never pass output_dtype, so
+    # this is always float at runtime, but the coercion is what makes that
+    # true for pyright too, not just for us.
+    return [float(value) for value in result.embeddings[0]]
