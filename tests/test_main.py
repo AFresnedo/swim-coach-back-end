@@ -10,6 +10,8 @@ _BASE_ENV = {
     "PATH": sys.exec_prefix + "/bin",
     "SECRET_KEY": "test-secret-key-not-real",
     "DATABASE_URL": "sqlite:///:memory:",
+    "ANTHROPIC_API_KEY": "test-anthropic-key-not-real",
+    "VOYAGE_API_KEY": "test-voyage-key-not-real",
 }
 
 
