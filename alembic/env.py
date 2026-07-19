@@ -5,11 +5,11 @@ from sqlalchemy import create_engine, pool
 import app.models  # noqa: F401
 import app.rag.models  # noqa: F401
 from alembic import context
-from app.config import settings
 from app.database import StandardBase, VectorBase
+from app.db_config import database_settings
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option("sqlalchemy.url", database_settings.database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -30,8 +30,8 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-    connectable = create_engine(settings.database_url, poolclass=pool.NullPool, connect_args=connect_args)
+    connect_args = {"check_same_thread": False} if database_settings.database_url.startswith("sqlite") else {}
+    connectable = create_engine(database_settings.database_url, poolclass=pool.NullPool, connect_args=connect_args)
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
