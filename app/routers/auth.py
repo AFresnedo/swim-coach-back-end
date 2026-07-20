@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
-from app.database import DbDep
+from app.database import DbDep, is_unique_violation
 from app.deps import CurrentUserDep
 from app.models import User
 from app.rate_limit import enforce_rate_limit, get_remote_address
@@ -44,12 +44,11 @@ def register(request: Request, payload: UserCreate, db: DbDep) -> Token:
     except IntegrityError as exc:
         # Two concurrent registrations for the same email can both pass the SELECT
         # check above before either commits (TOCTOU race), so the uniqueness violation
-        # can only be caught here, at the actual INSERT. Confirm the failure was really
-        # the email-uniqueness constraint (rather than some unrelated future constraint
-        # on this table) before reporting it as such, instead of assuming any
-        # IntegrityError here must mean this.
+        # can only be caught here, at the actual INSERT. Only report it as a duplicate
+        # email if that's genuinely what failed - some unrelated future constraint on
+        # this table must propagate as-is, not get mislabeled.
         db.rollback()
-        if "email" in str(exc.orig).lower():
+        if is_unique_violation(exc, column="email"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc
         raise
 

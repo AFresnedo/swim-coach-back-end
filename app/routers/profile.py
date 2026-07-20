@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from app.database import DbDep
+from app.database import DbDep, is_unique_violation
 from app.deps import CurrentUserDep
 from app.models import Profile
 from app.schemas import ProfileIn, ProfileOut
@@ -44,12 +44,12 @@ def upsert_profile(
             # Two concurrent PUT /profile calls for a brand-new user can both see
             # profile is None before either commits (TOCTOU race), so the second
             # INSERT collides with the first on the profiles.user_id unique index.
-            # Confirm that's really what happened (rather than some unrelated
-            # constraint) before falling back to an update - PUT is meant to be an
-            # idempotent upsert, so "someone else just created it a moment ago"
-            # should still succeed by updating the row that now exists, not error out.
+            # Only fall back to an update when that's genuinely what failed - PUT is
+            # meant to be an idempotent upsert, so "someone else just created it a
+            # moment ago" should still succeed by updating the row that now exists,
+            # while an unrelated constraint violation must propagate as-is.
             db.rollback()
-            if "user_id" not in str(exc.orig).lower():
+            if not is_unique_violation(exc, column="user_id"):
                 raise
             profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
             if profile is None:

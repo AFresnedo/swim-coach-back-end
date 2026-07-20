@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends
 from sqlalchemy import DateTime, create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.types import TypeDecorator
 
@@ -62,6 +63,29 @@ def check_connection() -> None:
     process boot instead of surfacing on whichever request first needs the DB."""
     with engine.connect():
         pass
+
+
+def is_unique_violation(error: IntegrityError, *, column: str) -> bool:
+    """Whether an already-caught IntegrityError is a uniqueness violation on `column`.
+
+    Used to tell a lost TOCTOU race - the row this request tried to INSERT was
+    created by a concurrent request a moment earlier, colliding on a unique index -
+    apart from an unrelated IntegrityError that must propagate untouched.
+
+    There's no structured, cross-backend way to read which constraint fired:
+    psycopg exposes it on `.orig.diag.constraint_name`, but SQLite (tests, local
+    dev) carries no such field and only names the offending column in its message
+    text ("UNIQUE constraint failed: users.email"). Postgres likewise names the
+    column, in its DETAIL line ("Key (email)=(...) already exists"). The column
+    name is therefore the one token both backends emit, which is why the match is
+    on it rather than on a constraint name only Postgres would supply. Requiring
+    the word "unique" too keeps an unrelated column-mentioning error (e.g. a NOT
+    NULL or CHECK on the same column) from being misread as a duplicate. This
+    text match is the one fragile spot; keeping it here means there's a single
+    place to harden if a backend's wording ever changes.
+    """
+    message = str(error.orig).lower()
+    return "unique" in message and column.lower() in message
 
 
 def get_db() -> Generator[Session]:
