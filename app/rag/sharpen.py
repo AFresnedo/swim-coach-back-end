@@ -8,7 +8,7 @@ from collections.abc import Sequence
 
 from app.config import settings
 from app.models import Goal, Profile
-from app.rag.clients import anthropic_client
+from app.rag.clients import anthropic_client, extract_response_text
 
 MAX_SHARPEN_TOKENS = 256
 
@@ -53,4 +53,4 @@ def sharpen_question(question: str, *, profile: Profile | None, goals: Sequence[
         system=system,
         messages=[{"role": "user", "content": question}],
     )
-    return next(block.text for block in response.content if block.type == "text").strip()
+    return extract_response_text(response, source="Claude").strip()
