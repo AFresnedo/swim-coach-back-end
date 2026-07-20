@@ -30,23 +30,23 @@ def _demographics(profile: Profile | None) -> str:
     return f"{profile.age}yo {profile.sex}"
 
 
-def _goals_summary(active_goals: Sequence[Goal]) -> str:
-    return ", ".join(goal.text for goal in active_goals)
+def _goals_summary(goals: Sequence[Goal]) -> str:
+    return ", ".join(goal.text for goal in goals)
 
 
-def _build_swimmer_context(profile: Profile | None, active_goals: Sequence[Goal]) -> str:
+def _build_swimmer_context(profile: Profile | None, goals: Sequence[Goal]) -> str:
     segments = []
     demographics = _demographics(profile)
     if demographics:
         segments.append(demographics)
-    goals_summary = _goals_summary(active_goals)
+    goals_summary = _goals_summary(goals)
     if goals_summary:
         segments.append(f"active goals: {goals_summary}")
     return "; ".join(segments) if segments else "no profile or goals on file"
 
 
-def sharpen_question(question: str, *, profile: Profile | None, active_goals: Sequence[Goal]) -> str:
-    system = _SYSTEM_PROMPT.format(context=_build_swimmer_context(profile, active_goals))
+def sharpen_question(question: str, *, profile: Profile | None, goals: Sequence[Goal]) -> str:
+    system = _SYSTEM_PROMPT.format(context=_build_swimmer_context(profile, goals))
     response = anthropic_client.messages.create(
         model=settings.sharpen_model,
         max_tokens=MAX_SHARPEN_TOKENS,
