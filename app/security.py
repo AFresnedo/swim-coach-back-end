@@ -19,7 +19,7 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def verify_password(*, plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
@@ -55,5 +55,8 @@ def decode_access_token(token: str) -> DecodedToken | None:
             user_id=int(payload["sub"]),
             issued_at=datetime.fromtimestamp(payload["iat"], tz=UTC),
         )
+    # Unparenthesized here is intentional, not stray Python-2 syntax: this project
+    # pins Python >=3.14, which parses a comma-separated except clause as an
+    # implicit tuple of exception types, equivalent to wrapping them in parens.
     except jwt.PyJWTError, KeyError, ValueError, TypeError:
         return None

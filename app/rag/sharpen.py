@@ -8,7 +8,7 @@ from collections.abc import Sequence
 
 from app.config import settings
 from app.models import Goal, Profile
-from app.rag.clients import anthropic_client
+from app.rag.clients import anthropic_client, extract_response_text
 
 MAX_SHARPEN_TOKENS = 256
 
@@ -31,7 +31,7 @@ def _demographics(profile: Profile | None) -> str:
 
 
 def _goals_summary(goals: Sequence[Goal]) -> str:
-    return ", ".join(goal.text for goal in goals if goal.is_active)
+    return ", ".join(goal.text for goal in goals)
 
 
 def _build_swimmer_context(profile: Profile | None, goals: Sequence[Goal]) -> str:
@@ -53,4 +53,4 @@ def sharpen_question(question: str, *, profile: Profile | None, goals: Sequence[
         system=system,
         messages=[{"role": "user", "content": question}],
     )
-    return next(block.text for block in response.content if block.type == "text").strip()
+    return extract_response_text(response, source="Claude").strip()

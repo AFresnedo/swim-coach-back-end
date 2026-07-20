@@ -4,7 +4,7 @@ no tools (see the "Hybrid RAG training-coach endpoint" Trello card).
 """
 
 from app.config import settings
-from app.rag.clients import anthropic_client
+from app.rag.clients import anthropic_client, extract_response_text
 from app.rag.retrieval import RetrievedChunk
 
 _SYSTEM_PROMPT_TEMPLATE = """You are a swim coach assistant. Answer the swimmer's \
@@ -35,4 +35,4 @@ def answer_from_knowledge(question: str, chunks: list[RetrievedChunk]) -> str:
         system=system,
         messages=[{"role": "user", "content": question}],
     )
-    return next(block.text for block in response.content if block.type == "text")
+    return extract_response_text(response, source="Claude")

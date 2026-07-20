@@ -1,17 +1,11 @@
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy.exc import IntegrityError
 
-from app.database import DbDep
+from app.database import DbDep, upsert_returning
 from app.deps import CurrentUserDep
 from app.models import Profile
 from app.schemas import ProfileIn, ProfileOut
 
 router = APIRouter(tags=["profile"])
-
-
-def _apply_profile_fields(profile: Profile, payload: ProfileIn) -> None:
-    for field, value in payload.model_dump().items():
-        setattr(profile, field, value)
 
 
 @router.get("/profile", response_model=ProfileOut)
@@ -33,36 +27,24 @@ def upsert_profile(
     current_user: CurrentUserDep,
     db: DbDep,
 ) -> Profile:
-    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-
-    if profile is None:
-        profile = Profile(user_id=current_user.id, **payload.model_dump())
-        db.add(profile)
-        try:
-            db.commit()
-        except IntegrityError as exc:
-            # Two concurrent PUT /profile calls for a brand-new user can both see
-            # profile is None before either commits (TOCTOU race), so the second
-            # INSERT collides with the first on the profiles.user_id unique index.
-            # Confirm that's really what happened (rather than some unrelated
-            # constraint) before falling back to an update - PUT is meant to be an
-            # idempotent upsert, so "someone else just created it a moment ago"
-            # should still succeed by updating the row that now exists, not error out.
-            db.rollback()
-            if "user_id" not in str(exc.orig).lower():
-                raise
-            profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-            if profile is None:
-                # The constraint violation said another row now exists for this
-                # user_id, so it should be findable here - if it isn't, something
-                # is genuinely wrong (e.g. it was deleted in the same instant).
-                # Don't silently proceed with no profile; surface the original error.
-                raise
-            _apply_profile_fields(profile, payload)
-            db.commit()
-    else:
-        _apply_profile_fields(profile, payload)
-        db.commit()
-
-    db.refresh(profile)
+    # PUT is an idempotent upsert: the first call creates the profile, every
+    # later call overwrites it.
+    #
+    # That's one INSERT ... ON CONFLICT (user_id) DO UPDATE statement, not a
+    # "look up the row, then insert or update" sequence. Look-up-first has a gap:
+    # two concurrent first-time PUTs can both see no existing profile and both
+    # try to INSERT, so the second one collides with the first. ON CONFLICT
+    # closes that gap - the second INSERT just becomes the UPDATE instead.
+    #
+    # user_id is the profiles table's only unique constraint, so it's the only
+    # column ON CONFLICT needs to watch here.
+    fields = payload.model_dump()
+    profile = upsert_returning(
+        db,
+        Profile,
+        values={"user_id": current_user.id, **fields},
+        conflict_columns=["user_id"],
+        update_columns=list(fields),
+    )
+    db.commit()
     return profile

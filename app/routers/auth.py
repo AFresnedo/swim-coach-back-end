@@ -1,10 +1,9 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request, status
-from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
-from app.database import DbDep
+from app.database import DbDep, insert_skip_on_conflict
 from app.deps import CurrentUserDep
 from app.models import User
 from app.rate_limit import enforce_rate_limit, get_remote_address
@@ -28,42 +27,39 @@ _DUMMY_HASH = hash_password("not-a-real-password")
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(request: Request, payload: UserCreate, db: DbDep) -> Token:
-    enforce_rate_limit(settings.register_rate_limit_per_ip, get_remote_address(request))
+    enforce_rate_limit(limit_string=settings.register_rate_limit_per_ip, key=get_remote_address(request))
 
-    if db.query(User).filter(User.email == payload.email).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-
-    user = User(
-        name=payload.name,
-        email=payload.email,
-        hashed_password=hash_password(payload.password),
+    # INSERT ... ON CONFLICT (email) DO NOTHING in a single atomic statement: a
+    # duplicate email inserts nothing and comes back as None, with no read-then-INSERT
+    # window where two concurrent registrations both pass a pre-check and one 500s on
+    # the collision. email is the users table's only unique constraint, so it's the
+    # sole conflict target; any other constraint violation still raises rather than
+    # being read as a duplicate email.
+    user = insert_skip_on_conflict(
+        db,
+        User,
+        values={
+            "name": payload.name,
+            "email": payload.email,
+            "hashed_password": hash_password(payload.password),
+        },
+        conflict_columns=["email"],
     )
-    db.add(user)
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        # Two concurrent registrations for the same email can both pass the SELECT
-        # check above before either commits (TOCTOU race), so the uniqueness violation
-        # can only be caught here, at the actual INSERT. Confirm the failure was really
-        # the email-uniqueness constraint (rather than some unrelated future constraint
-        # on this table) before reporting it as such, instead of assuming any
-        # IntegrityError here must mean this.
-        db.rollback()
-        if "email" in str(exc.orig).lower():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc
-        raise
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    db.commit()
 
     return Token(access_token=create_access_token(subject=user.id))
 
 
 @router.post("/login", response_model=Token)
 def login(request: Request, payload: UserLogin, db: DbDep) -> Token:
-    enforce_rate_limit(settings.login_rate_limit_per_ip, get_remote_address(request))
-    enforce_rate_limit(settings.login_rate_limit_per_email, payload.email)
+    enforce_rate_limit(limit_string=settings.login_rate_limit_per_ip, key=get_remote_address(request))
+    enforce_rate_limit(limit_string=settings.login_rate_limit_per_email, key=payload.email)
 
     user = db.query(User).filter(User.email == payload.email).first()
     hashed_password = user.hashed_password if user is not None else _DUMMY_HASH
-    password_valid = verify_password(payload.password, hashed_password)
+    password_valid = verify_password(plain_password=payload.password, hashed_password=hashed_password)
 
     if user is None or not password_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")

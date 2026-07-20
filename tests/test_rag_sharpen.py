@@ -61,15 +61,15 @@ def test_sharpen_question_omits_sex_when_prefer_not_to_say():
     assert "prefer_not_to_say" not in call_kwargs["system"]
 
 
-def test_sharpen_question_excludes_inactive_goals():
+def test_sharpen_question_summarizes_all_given_goals():
     fake_text_block = MagicMock(type="text", text="rewritten")
     fake_response = MagicMock(content=[fake_text_block])
-    active = _goal(text="sub-60 100 free", is_active=True)
-    inactive = _goal(text="qualify for states", is_active=False, deactivation_reason="reached")
+    first = _goal(text="sub-60 100 free")
+    second = _goal(text="qualify for states")
 
     with patch("app.rag.sharpen.anthropic_client.messages.create", return_value=fake_response) as mock_create:
-        sharpen_question("question", profile=None, goals=[active, inactive])
+        sharpen_question("question", profile=None, goals=[first, second])
 
     call_kwargs = mock_create.call_args.kwargs
     assert "sub-60 100 free" in call_kwargs["system"]
-    assert "qualify for states" not in call_kwargs["system"]
+    assert "qualify for states" in call_kwargs["system"]
