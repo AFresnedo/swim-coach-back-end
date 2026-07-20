@@ -4,7 +4,8 @@ from typing import Annotated
 
 from fastapi import Depends
 from sqlalchemy import DateTime, create_engine
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.types import TypeDecorator
 
@@ -65,27 +66,76 @@ def check_connection() -> None:
         pass
 
 
-def is_unique_violation(error: IntegrityError, *, column: str) -> bool:
-    """Whether an already-caught IntegrityError is a uniqueness violation on `column`.
+def _conflict_insert[ModelT: DeclarativeBase](db: Session, model: type[ModelT]):
+    """Return the dialect-specific INSERT construct that supports ON CONFLICT.
 
-    Used to tell a lost TOCTOU race - the row this request tried to INSERT was
-    created by a concurrent request a moment earlier, colliding on a unique index -
-    apart from an unrelated IntegrityError that must propagate untouched.
-
-    There's no structured, cross-backend way to read which constraint fired:
-    psycopg exposes it on `.orig.diag.constraint_name`, but SQLite (tests, local
-    dev) carries no such field and only names the offending column in its message
-    text ("UNIQUE constraint failed: users.email"). Postgres likewise names the
-    column, in its DETAIL line ("Key (email)=(...) already exists"). The column
-    name is therefore the one token both backends emit, which is why the match is
-    on it rather than on a constraint name only Postgres would supply. Requiring
-    the word "unique" too keeps an unrelated column-mentioning error (e.g. a NOT
-    NULL or CHECK on the same column) from being misread as a duplicate. This
-    text match is the one fragile spot; keeping it here means there's a single
-    place to harden if a backend's wording ever changes.
+    SQLAlchemy has no backend-neutral ON CONFLICT: the Postgres and SQLite
+    dialects each ship their own insert() with the on_conflict_* methods, and the
+    generic construct has neither. Both backends run in this project (Postgres in
+    prod, SQLite in tests/local dev), so the one spot where the two dialects
+    diverge is isolated here rather than leaking into every call site.
     """
-    message = str(error.orig).lower()
-    return "unique" in message and column.lower() in message
+    dialect = db.get_bind().dialect.name
+    if dialect == "postgresql":
+        return pg_insert(model)
+    if dialect == "sqlite":
+        return sqlite_insert(model)
+    raise RuntimeError(f"ON CONFLICT upsert is not implemented for the {dialect!r} dialect")
+
+
+def upsert_returning[ModelT: DeclarativeBase](
+    db: Session,
+    model: type[ModelT],
+    *,
+    values: dict[str, object],
+    conflict_columns: list[str],
+    update_columns: list[str],
+) -> ModelT:
+    """INSERT `values`, or UPDATE `update_columns` if a row already exists on the
+    `conflict_columns` unique index - one atomic statement, so there's no
+    read-then-write window for two concurrent first-time writers to race through.
+    Returns the resulting row as a live ORM instance, taken from the statement's
+    RETURNING clause so it reflects exactly what was persisted.
+
+    `conflict_columns` must name a real unique constraint/index: ON CONFLICT only
+    absorbs a collision on that specific target, so a violation of any other
+    constraint still raises rather than being silently swallowed.
+    """
+    statement = _conflict_insert(db, model).values(**values)
+    statement = statement.on_conflict_do_update(
+        index_elements=conflict_columns,
+        set_={column: statement.excluded[column] for column in update_columns},
+    ).returning(model)
+    # populate_existing overwrites any stale copy of this row already in the
+    # session's identity map with the RETURNING values, so the returned instance
+    # can't shadow the write with a pre-write cached state.
+    return db.execute(statement, execution_options={"populate_existing": True}).scalars().one()
+
+
+def insert_skip_on_conflict[ModelT: DeclarativeBase](
+    db: Session,
+    model: type[ModelT],
+    *,
+    values: dict[str, object],
+    conflict_columns: list[str],
+) -> ModelT | None:
+    """INSERT `values`, or skip the write if a row already exists on the
+    `conflict_columns` unique index - one atomic statement, no read-then-INSERT
+    race window. Returns the newly inserted row as a live ORM instance, or None if
+    the row already existed (nothing was inserted) - the caller still learns which
+    case happened via that return value, the conflict itself isn't swallowed, only
+    the write and the INSERT-time error are skipped.
+
+    `conflict_columns` must name a real unique constraint/index: a collision on any
+    other constraint still raises rather than being absorbed here.
+    """
+    statement = (
+        _conflict_insert(db, model)
+        .values(**values)
+        .on_conflict_do_nothing(index_elements=conflict_columns)
+        .returning(model)
+    )
+    return db.execute(statement, execution_options={"populate_existing": True}).scalars().one_or_none()
 
 
 def get_db() -> Generator[Session]:

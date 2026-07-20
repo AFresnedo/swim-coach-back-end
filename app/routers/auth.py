@@ -1,10 +1,9 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request, status
-from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
-from app.database import DbDep, is_unique_violation
+from app.database import DbDep, insert_skip_on_conflict
 from app.deps import CurrentUserDep
 from app.models import User
 from app.rate_limit import enforce_rate_limit, get_remote_address
@@ -30,27 +29,25 @@ _DUMMY_HASH = hash_password("not-a-real-password")
 def register(request: Request, payload: UserCreate, db: DbDep) -> Token:
     enforce_rate_limit(settings.register_rate_limit_per_ip, get_remote_address(request))
 
-    if db.query(User).filter(User.email == payload.email).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-
-    user = User(
-        name=payload.name,
-        email=payload.email,
-        hashed_password=hash_password(payload.password),
+    # INSERT ... ON CONFLICT (email) DO NOTHING in a single atomic statement: a
+    # duplicate email inserts nothing and comes back as None, with no read-then-INSERT
+    # window where two concurrent registrations both pass a pre-check and one 500s on
+    # the collision. email is the users table's only unique constraint, so it's the
+    # sole conflict target; any other constraint violation still raises rather than
+    # being read as a duplicate email.
+    user = insert_skip_on_conflict(
+        db,
+        User,
+        values={
+            "name": payload.name,
+            "email": payload.email,
+            "hashed_password": hash_password(payload.password),
+        },
+        conflict_columns=["email"],
     )
-    db.add(user)
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        # Two concurrent registrations for the same email can both pass the SELECT
-        # check above before either commits (TOCTOU race), so the uniqueness violation
-        # can only be caught here, at the actual INSERT. Only report it as a duplicate
-        # email if that's genuinely what failed - some unrelated future constraint on
-        # this table must propagate as-is, not get mislabeled.
-        db.rollback()
-        if is_unique_violation(exc, column="email"):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc
-        raise
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    db.commit()
 
     return Token(access_token=create_access_token(subject=user.id))
 

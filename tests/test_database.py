@@ -2,9 +2,11 @@ from contextlib import contextmanager
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models import Profile, User
 
 
 @contextmanager
@@ -39,3 +41,25 @@ def test_get_db_rolls_back_before_closing_on_exception():
             gen.throw(ValueError("boom"))
 
         assert [call[0] for call in manager.mock_calls] == ["rollback", "close"]
+
+
+def _unique_signatures(model: type) -> set[tuple[str, ...]]:
+    signatures = {
+        tuple(col.name for col in constraint.columns)
+        for constraint in model.__table__.constraints
+        if isinstance(constraint, UniqueConstraint)
+    }
+    signatures |= {tuple(col.name for col in index.columns) for index in model.__table__.indexes if index.unique}
+    return signatures
+
+
+def test_upsert_conflict_targets_are_each_table_s_only_unique_constraint():
+    # auth.register and profile.upsert_profile each run a single INSERT ... ON
+    # CONFLICT that names ONE conflict target (email / user_id) and absorbs a
+    # collision only on that target - a violation of any *other* unique constraint
+    # would bypass ON CONFLICT and surface as a 500 instead of a clean 4xx. That's
+    # safe only while each target is its table's sole non-PK unique constraint.
+    # If this test fails because you added a unique constraint, revisit those two
+    # endpoints before updating the expected set here.
+    assert _unique_signatures(User) == {("email",)}
+    assert _unique_signatures(Profile) == {("user_id",)}
