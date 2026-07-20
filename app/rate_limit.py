@@ -24,7 +24,7 @@ def get_remote_address(request: Request) -> str:
     return request.client.host
 
 
-def enforce_rate_limit(limit_string: str, key: str) -> None:
+def enforce_rate_limit(*, limit_string: str, key: str) -> None:
     """Consume one hit against the given rate limit for the given key, raising 429
     if it's exceeded. Every rate limit in this app goes through this single,
     explicit helper - called directly in a route body with whatever key makes

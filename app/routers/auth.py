@@ -27,7 +27,7 @@ _DUMMY_HASH = hash_password("not-a-real-password")
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(request: Request, payload: UserCreate, db: DbDep) -> Token:
-    enforce_rate_limit(settings.register_rate_limit_per_ip, get_remote_address(request))
+    enforce_rate_limit(limit_string=settings.register_rate_limit_per_ip, key=get_remote_address(request))
 
     # INSERT ... ON CONFLICT (email) DO NOTHING in a single atomic statement: a
     # duplicate email inserts nothing and comes back as None, with no read-then-INSERT
@@ -54,12 +54,12 @@ def register(request: Request, payload: UserCreate, db: DbDep) -> Token:
 
 @router.post("/login", response_model=Token)
 def login(request: Request, payload: UserLogin, db: DbDep) -> Token:
-    enforce_rate_limit(settings.login_rate_limit_per_ip, get_remote_address(request))
-    enforce_rate_limit(settings.login_rate_limit_per_email, payload.email)
+    enforce_rate_limit(limit_string=settings.login_rate_limit_per_ip, key=get_remote_address(request))
+    enforce_rate_limit(limit_string=settings.login_rate_limit_per_email, key=payload.email)
 
     user = db.query(User).filter(User.email == payload.email).first()
     hashed_password = user.hashed_password if user is not None else _DUMMY_HASH
-    password_valid = verify_password(payload.password, hashed_password)
+    password_valid = verify_password(plain_password=payload.password, hashed_password=hashed_password)
 
     if user is None or not password_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
