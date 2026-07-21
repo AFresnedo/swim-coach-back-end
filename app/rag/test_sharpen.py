@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from app.models import Goal, Profile
+from app.goal.model import Goal
+from app.profile.model import Profile
 from app.rag.sharpen import sharpen_question
 
 

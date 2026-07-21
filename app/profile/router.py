@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.database import DbDep, upsert_returning
 from app.deps import CurrentUserDep
-from app.models import Profile
-from app.schemas import ProfileIn, ProfileOut
+from app.profile.model import Profile
+from app.profile.schema import ProfileIn, ProfileOut
 
 router = APIRouter(tags=["profile"])
 

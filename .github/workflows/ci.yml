@@ -71,7 +71,13 @@ jobs:
         run: uv run pyright .
 
       - name: Security scan
-        run: uv run bandit -r app
+        # Tests are colocated inside app/ (e.g. app/goal/test_router.py, plus the
+        # shared app/conftest.py) rather than kept in a separate directory, so they'd
+        # otherwise be swept into this scan. pyproject.toml's [tool.bandit]
+        # exclude_dirs doesn't support glob patterns (verified - a "*/test_*.py"
+        # entry there is silently ignored), so the exclusion has to happen here via
+        # the CLI's -x flag instead.
+        run: uv run bandit -r app -x "*/test_*.py,app/conftest.py"
 
       # `uv audit` reads uv.lock natively and is faster, but is still experimental/unstable
       # (https://astral.sh/blog/uv-audit) as of June 2026 - switch to it once it stabilizes.

@@ -4,8 +4,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from app.database import DbDep
-from app.models import User
 from app.security import decode_access_token
+from app.user.model import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 

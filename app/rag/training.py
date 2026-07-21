@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Profile
+from app.profile.model import Profile
 from app.rag.answer import answer_from_knowledge
 from app.rag.embeddings import embed_query
 from app.rag.query import clean_question
