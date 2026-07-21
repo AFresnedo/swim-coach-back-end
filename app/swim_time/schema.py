@@ -2,7 +2,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.enums import CourseLiteral, StrokeLiteral
+from app.enums import StrokeLiteral
+from app.swim_time.enums import CourseLiteral
 
 
 class SwimTimeIn(BaseModel):

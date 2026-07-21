@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.enums import DeactivationReasonLiteral
+from app.goal.enums import DeactivationReasonLiteral
 
 
 class GoalIn(BaseModel):

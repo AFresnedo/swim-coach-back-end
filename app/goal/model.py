@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import StandardBase, UTCDateTime
-from app.enums import DEACTIVATION_REASONS, DeactivationReasonLiteral
+from app.goal.enums import DEACTIVATION_REASONS, DeactivationReasonLiteral
 from app.model_utils import enum_column, utcnow
 
 

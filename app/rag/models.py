@@ -1,28 +1,35 @@
 from datetime import datetime
+from typing import Literal, get_args
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import CheckConstraint, Float, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import UTCDateTime, VectorBase
-from app.enums import (
-    INGESTION_REASONS,
-    QUALITY_FLAGS,
-    SKILL_LEVELS,
-    STROKES,
-    TOPIC_CATEGORIES,
-    IngestionReasonLiteral,
-    QualityFlagLiteral,
-    SkillLevelLiteral,
-    StrokeLiteral,
-    TopicCategoryLiteral,
-)
+from app.enums import STROKES, StrokeLiteral
 from app.model_utils import in_clause, nullable_in_clause, utcnow
 
 # voyage-4-lite's output_dimension. Changing models/dimensions later requires a
 # migration (the HNSW index and column width are baked to this size) and a full
 # re-embed of any existing rows - not something to change casually.
 EMBEDDING_DIMENSION = 512
+
+# Provisional starter taxonomy for SwimKnowledge classification - deliberately not
+# final. Must be revisited once the hybrid-retrieval ticket defines its actual
+# metadata-routing needs, before the step-4 ingestion prompt that populates these
+# fields is built. Owned by this module alone (rag/models.py is their only
+# consumer), unlike StrokeLiteral above which swim_time also depends on.
+IngestionReasonLiteral = Literal["fallback_web_search"]
+QualityFlagLiteral = Literal["pass", "reject"]
+TopicCategoryLiteral = Literal[
+    "technique", "drills", "training_science", "recovery", "nutrition", "race_strategy", "equipment"
+]
+SkillLevelLiteral = Literal["beginner", "intermediate", "advanced", "elite"]
+
+INGESTION_REASONS: tuple[str, ...] = get_args(IngestionReasonLiteral)
+QUALITY_FLAGS: tuple[str, ...] = get_args(QualityFlagLiteral)
+TOPIC_CATEGORIES: tuple[str, ...] = get_args(TopicCategoryLiteral)
+SKILL_LEVELS: tuple[str, ...] = get_args(SkillLevelLiteral)
 
 
 class KnowledgeChunkMixin:

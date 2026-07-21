@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.enums import SexLiteral, UnitPreferenceLiteral
+from app.profile.enums import SexLiteral, UnitPreferenceLiteral
 
 
 class ProfileIn(BaseModel):

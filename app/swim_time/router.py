@@ -7,7 +7,8 @@ from sqlalchemy import and_, or_
 
 from app.database import DbDep
 from app.deps import CurrentUserDep
-from app.enums import CourseLiteral, StrokeLiteral
+from app.enums import StrokeLiteral
+from app.swim_time.enums import CourseLiteral
 from app.swim_time.model import SwimTime
 from app.swim_time.schema import SwimTimeIn, SwimTimeOut, SwimTimePage
 

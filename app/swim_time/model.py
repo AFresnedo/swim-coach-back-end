@@ -4,8 +4,9 @@ from sqlalchemy import Boolean, CheckConstraint, Date, Float, ForeignKey, Index,
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import StandardBase, UTCDateTime
-from app.enums import COURSES, STROKES, CourseLiteral, StrokeLiteral
+from app.enums import STROKES, StrokeLiteral
 from app.model_utils import enum_column, utcnow
+from app.swim_time.enums import COURSES, CourseLiteral
 
 
 class SwimTime(StandardBase):

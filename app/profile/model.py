@@ -2,8 +2,8 @@ from sqlalchemy import Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import StandardBase
-from app.enums import SEXES, UNIT_PREFERENCES, SexLiteral, UnitPreferenceLiteral
 from app.model_utils import enum_column
+from app.profile.enums import SEXES, UNIT_PREFERENCES, SexLiteral, UnitPreferenceLiteral
 
 
 class Profile(StandardBase):
