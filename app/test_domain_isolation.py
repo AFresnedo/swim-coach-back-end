@@ -17,7 +17,7 @@ import ast
 from pathlib import Path
 
 BASE_DOMAINS = {"user", "goal", "profile", "swim_time"}
-APP_ROOT = Path(__file__).resolve().parent.parent / "app"
+APP_ROOT = Path(__file__).resolve().parent
 
 
 def _imported_modules(path: Path) -> set[str]:

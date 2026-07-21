@@ -33,19 +33,19 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["app", "tests"]
+testpaths = ["app"]
 pythonpath = ["."]
 addopts = "-ra --cov=app --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["app"]
 branch = true
-# Tests are colocated inside app/ (e.g. app/goal/test_router.py) rather than kept in
-# a separate directory. Without this, a test file trivially covering itself just by
-# running would count toward "app" coverage, padding the reported percentage instead
-# of measuring what this has always measured: how much of the actual application
-# code is exercised.
-omit = ["*/test_*.py"]
+# Tests are colocated inside app/ (e.g. app/goal/test_router.py, plus the shared
+# app/conftest.py) rather than kept in a separate directory. Without this, test/
+# fixture code trivially covering itself just by running would count toward "app"
+# coverage, padding the reported percentage instead of measuring what this has
+# always measured: how much of the actual application code is exercised.
+omit = ["*/test_*.py", "app/conftest.py"]
 
 [tool.ruff]
 line-length = 120
@@ -58,10 +58,10 @@ select = ["E", "F", "I", "UP", "B", "N"]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]
 
 [tool.pyright]
-include = ["app", "tests"]
+include = ["app"]
 pythonVersion = "3.14"
 venvPath = "."
 venv = ".venv"
 
 [tool.bandit]
-exclude_dirs = ["tests", ".venv"]
+exclude_dirs = [".venv"]
