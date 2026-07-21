@@ -71,7 +71,13 @@ jobs:
         run: uv run pyright .
 
       - name: Security scan
-        run: uv run bandit -r app
+        # Tests are colocated inside app/ (e.g. app/goal/test_router.py) rather than
+        # kept in a separate directory, so they'd otherwise be swept into this scan -
+        # -x here excludes them the same way exclude_dirs = ["tests"] in
+        # pyproject.toml's [tool.bandit] section used to (that entry predates the
+        # colocation and is now only relevant to an ad-hoc `bandit -r .` scan of the
+        # whole repo, not this command).
+        run: uv run bandit -r app -x "*/test_*.py"
 
       # `uv audit` reads uv.lock natively and is faster, but is still experimental/unstable
       # (https://astral.sh/blog/uv-audit) as of June 2026 - switch to it once it stabilizes.

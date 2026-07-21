@@ -33,13 +33,19 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["app", "tests"]
 pythonpath = ["."]
 addopts = "-ra --cov=app --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["app"]
 branch = true
+# Tests are colocated inside app/ (e.g. app/goal/test_router.py) rather than kept in
+# a separate directory. Without this, a test file trivially covering itself just by
+# running would count toward "app" coverage, padding the reported percentage instead
+# of measuring what this has always measured: how much of the actual application
+# code is exercised.
+omit = ["*/test_*.py"]
 
 [tool.ruff]
 line-length = 120
