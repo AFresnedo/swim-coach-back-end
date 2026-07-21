@@ -2,13 +2,14 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request, status
 
-from app.auth.model import User
-from app.auth.schema import Token, UserCreate, UserLogin, UserOut
+from app.auth.schema import Token, UserCreate, UserLogin
 from app.config import settings
 from app.database import DbDep, insert_skip_on_conflict
 from app.deps import CurrentUserDep
 from app.rate_limit import enforce_rate_limit, get_remote_address
 from app.security import create_access_token, hash_password, verify_password
+from app.user.model import User
+from app.user.schema import UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

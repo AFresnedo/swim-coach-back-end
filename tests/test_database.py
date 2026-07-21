@@ -5,9 +5,9 @@ import pytest
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Session
 
-from app.auth.model import User
 from app.database import get_db
 from app.profile.model import Profile
+from app.user.model import User
 
 
 @contextmanager
