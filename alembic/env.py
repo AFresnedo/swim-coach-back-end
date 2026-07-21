@@ -2,8 +2,11 @@ from logging.config import fileConfig
 
 from sqlalchemy import create_engine, pool
 
-import app.models  # noqa: F401
+import app.goal.model  # noqa: F401
+import app.profile.model  # noqa: F401
 import app.rag.models  # noqa: F401
+import app.swim_time.model  # noqa: F401
+import app.user.model  # noqa: F401
 from alembic import context
 from app.database import StandardBase, VectorBase
 from app.db_config import database_settings

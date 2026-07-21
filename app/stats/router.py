@@ -2,9 +2,10 @@ from fastapi import APIRouter, Request
 
 from app.config import settings
 from app.database import DbDep
-from app.models import SwimTime, User
 from app.rate_limit import enforce_rate_limit, get_remote_address
-from app.schemas import SwimCountOut, UserCountOut
+from app.stats.schema import SwimCountOut, UserCountOut
+from app.swim_time.model import SwimTime
+from app.user.model import User
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 

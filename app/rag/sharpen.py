@@ -7,7 +7,8 @@ threshold (see the "Hybrid RAG training-coach endpoint" Trello card).
 from collections.abc import Sequence
 
 from app.config import settings
-from app.models import Goal, Profile
+from app.goal.model import Goal
+from app.profile.model import Profile
 from app.rag.clients import anthropic_client, extract_response_text
 
 MAX_SHARPEN_TOKENS = 256

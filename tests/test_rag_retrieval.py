@@ -1,4 +1,4 @@
-from app.models import Goal
+from app.goal.model import Goal
 from app.rag.models import EMBEDDING_DIMENSION, SwimKnowledge
 from app.rag.retrieval import fetch_active_goals, search_swim_knowledge
 

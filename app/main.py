@@ -8,8 +8,13 @@ from starlette.responses import Response
 from app.config import Settings, settings
 from app.database import check_connection
 from app.docs import docs_urls
+from app.goal.router import router as goal_router
+from app.profile.router import router as profile_router
+from app.rag.router import router as training_router
 from app.rate_limit import check_storage
-from app.routers import auth, goals, profile, stats, swim_times, training
+from app.stats.router import router as stats_router
+from app.swim_time.router import router as swim_time_router
+from app.user.router import router as user_router
 
 
 @asynccontextmanager
@@ -57,12 +62,12 @@ def create_app(settings: Settings = settings) -> FastAPI:
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
-    app.include_router(auth.router)
-    app.include_router(goals.router)
-    app.include_router(profile.router)
-    app.include_router(stats.router)
-    app.include_router(swim_times.router)
-    app.include_router(training.router)
+    app.include_router(user_router)
+    app.include_router(goal_router)
+    app.include_router(profile_router)
+    app.include_router(stats_router)
+    app.include_router(swim_time_router)
+    app.include_router(training_router)
 
     @app.get("/health")
     def health() -> dict[str, str]:
