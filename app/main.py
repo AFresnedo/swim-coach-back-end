@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import Response
 
+from app.auth.router import router as auth_router
 from app.config import Settings, settings
 from app.database import check_connection
 from app.docs import docs_urls
@@ -14,7 +15,6 @@ from app.rag.router import router as training_router
 from app.rate_limit import check_storage
 from app.stats.router import router as stats_router
 from app.swim_time.router import router as swim_time_router
-from app.user.router import router as user_router
 
 
 @asynccontextmanager
@@ -62,7 +62,7 @@ def create_app(settings: Settings = settings) -> FastAPI:
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
-    app.include_router(user_router)
+    app.include_router(auth_router)
     app.include_router(goal_router)
     app.include_router(profile_router)
     app.include_router(stats_router)

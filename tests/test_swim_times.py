@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 
+from app.auth.model import User
 from app.swim_time.model import SwimTime
-from app.user.model import User
 
 VALID_SWIM_TIME = {
     "date": "2026-07-01",

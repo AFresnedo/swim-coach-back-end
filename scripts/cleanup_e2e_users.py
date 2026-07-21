@@ -11,11 +11,11 @@ import sys
 
 from sqlalchemy import delete, select
 
+from app.auth.model import User
 from app.database import SessionLocal
 from app.goal.model import Goal
 from app.profile.model import Profile
 from app.swim_time.model import SwimTime
-from app.user.model import User
 
 
 def main(emails: list[str]) -> None:

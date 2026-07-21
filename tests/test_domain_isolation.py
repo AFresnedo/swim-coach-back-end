@@ -6,7 +6,7 @@ dependency that then anchors future decisions."""
 import ast
 from pathlib import Path
 
-BASE_DOMAINS = {"user", "goal", "profile", "swim_time"}
+BASE_DOMAINS = {"auth", "goal", "profile", "swim_time"}
 APP_ROOT = Path(__file__).resolve().parent.parent / "app"
 
 
