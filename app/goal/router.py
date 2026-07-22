@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.database import DbDep
 from app.deps import CurrentUserDep
-from app.models import Goal
-from app.schemas import GoalDeactivateReason, GoalIn, GoalOut
+from app.goal.model import Goal
+from app.goal.schema import GoalDeactivateReason, GoalIn, GoalOut
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 

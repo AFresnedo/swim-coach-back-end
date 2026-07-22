@@ -101,11 +101,11 @@ uv sync
 Before pushing, you can run every check CI runs, in the same order, to catch failures locally:
 
 ```bash
-uv run ruff format --check .  # formatting
-uv run ruff check .           # lint
-uv run pyright .               # type check
-uv run bandit -r app           # security static analysis
-uv run pytest -v               # tests + coverage report
+uv run ruff format --check .                            # formatting
+uv run ruff check .                                     # lint
+uv run pyright .                                        # type check
+uv run bandit -r app -x "*/*_test.py,app/conftest.py"   # security static analysis
+uv run pytest -v                                        # tests + coverage report
 ```
 
 `uv run ruff format .` (no `--check`) will auto-fix formatting in place.
@@ -134,9 +134,10 @@ which mirrors the local commands above plus a dependency vulnerability scan:
 2. `ruff format --check` — formatting
 3. `ruff check` — lint
 4. `pyright` — type checking
-5. `bandit -r app` — security static analysis
+5. `bandit -r app -x "*/*_test.py,app/conftest.py"` — security static analysis (tests are
+   colocated inside `app/`, so they're excluded here rather than living outside its scan)
 6. `pip-audit` (via `uvx`, against an exported `uv.lock`) — known CVEs in dependencies
-7. `pytest -v` — tests, with coverage reported (currently ~96%)
+7. `pytest -v` — tests, with coverage reported (currently ~99%)
 
 It also spins up a live Postgres service container to verify Alembic migrations apply
 cleanly from scratch. The job times out after 10 minutes and runs with read-only repo

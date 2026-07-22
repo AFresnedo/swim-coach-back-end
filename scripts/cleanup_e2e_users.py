@@ -12,7 +12,10 @@ import sys
 from sqlalchemy import delete, select
 
 from app.database import SessionLocal
-from app.models import Goal, Profile, SwimTime, User
+from app.goal.model import Goal
+from app.profile.model import Profile
+from app.swim_time.model import SwimTime
+from app.user.model import User
 
 
 def main(emails: list[str]) -> None:

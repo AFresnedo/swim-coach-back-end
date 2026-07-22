@@ -32,7 +32,7 @@ jobs:
         ports:
           - 5432:5432
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
@@ -71,7 +71,13 @@ jobs:
         run: uv run pyright .
 
       - name: Security scan
-        run: uv run bandit -r app
+        # Tests are colocated inside app/ (e.g. app/goal/router_test.py, plus the
+        # shared app/conftest.py) rather than kept in a separate directory, so they'd
+        # otherwise be swept into this scan. pyproject.toml's [tool.bandit]
+        # exclude_dirs doesn't support glob patterns (verified - a "*/*_test.py"
+        # entry there is silently ignored), so the exclusion has to happen here via
+        # the CLI's -x flag instead.
+        run: uv run bandit -r app -x "*/*_test.py,app/conftest.py"
 
       # `uv audit` reads uv.lock natively and is faster, but is still experimental/unstable
       # (https://astral.sh/blog/uv-audit) as of June 2026 - switch to it once it stabilizes.

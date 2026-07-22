@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from app.models import Goal
+from app.goal.model import Goal
 from app.rag.models import SwimKnowledge
 
 DEFAULT_TOP_K = 5

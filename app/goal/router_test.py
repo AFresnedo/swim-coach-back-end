@@ -1,4 +1,4 @@
-from app.schemas import GoalIn
+from app.goal.schema import GoalIn
 
 MAX_GOAL_TEXT_LENGTH = GoalIn.model_json_schema()["properties"]["text"]["maxLength"]
 

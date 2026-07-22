@@ -2,8 +2,8 @@ from fastapi import APIRouter
 
 from app.database import DbDep
 from app.deps import CurrentUserDep
+from app.rag.schema import TrainingAskIn, TrainingAskOut
 from app.rag.training import ask_training
-from app.schemas import TrainingAskIn, TrainingAskOut
 
 router = APIRouter(prefix="/training", tags=["training"])
 

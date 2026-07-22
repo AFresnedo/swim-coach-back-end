@@ -6,7 +6,8 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Profile, User
+from app.profile.model import Profile
+from app.user.model import User
 
 
 @contextmanager
