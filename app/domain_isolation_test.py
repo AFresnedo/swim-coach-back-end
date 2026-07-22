@@ -8,7 +8,7 @@ swim_time, rag reads goal and profile), so a base domain never needs to import
 one of them back.
 
 Only non-test files are scanned. Tests are colocated inside each domain folder
-(e.g. app/swim_time/test_router.py), and integration-style test setup
+(e.g. app/swim_time/router_test.py), and integration-style test setup
 legitimately builds cross-referenced domain data - a SwimTime row needs a real
 User to attach to via its foreign key - which isn't the same coupling this
 check exists to catch in production code."""
@@ -29,7 +29,7 @@ def test_base_domains_do_not_import_each_other():
     violations = []
     for domain in BASE_DOMAINS:
         for py_file in (APP_ROOT / domain).glob("*.py"):
-            if py_file.name.startswith("test_"):
+            if py_file.name.endswith("_test.py"):
                 continue
             for module in _imported_modules(py_file):
                 parts = module.split(".")
