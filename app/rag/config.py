@@ -10,11 +10,13 @@ class RagSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # No default, same "fail now, not silently later" stance as secret_key -
-    # the coach endpoint can't run without these, so a missing key should surface
-    # at process boot rather than as a 401 on the first request that needs it.
-    anthropic_api_key: str
-    voyage_api_key: str
+    # Optional, unlike secret_key: both underlying SDKs (anthropic.Anthropic,
+    # voyageai.client.Client) accept api_key=None without raising at
+    # construction time, so a missing key here doesn't need to take down the
+    # whole app at boot - it only breaks the coach endpoint specifically, the
+    # first time something actually calls out to Anthropic or Voyage.
+    anthropic_api_key: str | None = None
+    voyage_api_key: str | None = None
 
     # Card step 3 specifies Sonnet 5 with an explicit config-swap escape hatch to
     # Haiku - not a free-form model string, so a typo'd model id fails at startup
