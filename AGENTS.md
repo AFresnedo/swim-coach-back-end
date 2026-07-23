@@ -36,6 +36,16 @@ If your own implementation instincts imply scope beyond what was explicitly aske
 
 Code that works correctly can still have a genuine, articulable maintainability problem — mixed concerns, domain-specific logic sitting in a general-purpose file, a missing single-responsibility split — that will bite the next person who builds on it. When asked to assess whether code is good or where something belongs, "it's correct" is not the same bar as "it's clean" — a real maintainability issue deserves to be named, not waved off because nothing is currently broken.
 
+## Definition of done includes a self-review pass
+
+"Correct" and "clean enough that a reviewer wouldn't need to ask for changes" are two separate bars — a task isn't done until both are met. Don't treat cleanliness as a follow-up step that happens after the user reviews and pushes back on it; self-review happens before the work is presented, the same way TDD's refactor step (Beck, *Test-Driven Development: By Example*) happens before a change counts as finished, not after someone else flags it.
+
+Concretely: after implementing a nontrivial change, run `/simplify` on it before presenting the work as complete — proactively, not only when asked. This is separate from the `/code-review` restriction above: `/simplify` is quality-only (reuse, simplification, efficiency, altitude) and doesn't hunt for bugs, so it isn't gated the same way — `/code-review` still needs an explicit ask each turn.
+
+A caution against over-decomposition — Ousterhout's deep-module argument against shallow modules, *A Philosophy of Software Design* — is never sufficient justification, by itself, to leave large or tangled code unrefactored. It only applies when backed by something concrete and specific to the case at hand, not as a default response to a cleanup request, and not as a reason to skip the self-review pass above.
+
+As a rough guide, not a mechanical rule: a function doing more than one clearly nameable thing, or running past roughly 25 lines of actual logic — not counting declarative field lists in SQLAlchemy models or Pydantic schemas, which are data-shape declarations, not logic — is a signal to extract (SRP, Martin's *Clean Code*). This is guidance for judgment, not a lint threshold to satisfy by splitting trivial one-liners into their own functions.
+
 ## Tested inferior code is not a cost to preserve
 
 When a better approach would require rewriting or deleting existing tests, the fact that the current approach is already tested is never a mark against the change. Rewriting tests to match improved code is part of the work, not a cost weighed against doing it — so don't list "the old behavior is tested" as friction, a downside, or a reason to hesitate, and don't let test coverage of an inferior approach anchor a decision toward keeping it. Tests exist to protect the behavior you want, not to entrench the implementation you happen to have. (This is the same principle as never letting existing code style justify keeping a worse pattern, applied to the test suite: precedent — including test precedent — only ever informs a decision after merit, never gates it.)
