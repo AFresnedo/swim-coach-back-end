@@ -8,9 +8,9 @@ Before writing or reviewing FastAPI code (path operations, dependencies, streami
 
 and its `references/` subfolder. These match the exact FastAPI version installed (see `pyproject.toml` / `uv.lock`), which training knowledge cannot guarantee.
 
-## Code review requires explicit permission
+## Code review and /simplify require explicit permission
 
-Never run the `/code-review` skill, or spawn code-review subagents/finder-angle agents, unless the user explicitly asks for it in that specific turn — not proactively, even right after implementing a nontrivial feature or fixing a bug. Manual verification (running tests, exercising the endpoint, checking types/lint) is expected and different from this; this rule is specifically about launching the `/code-review` skill or equivalent multi-agent review flows without being asked.
+Never run the `/code-review` skill or the `/simplify` skill, or spawn code-review subagents/finder-angle agents, unless the user explicitly asks for it in that specific turn — not proactively, even right after implementing a nontrivial feature or fixing a bug. Manual verification (running tests, exercising the endpoint, checking types/lint) is expected and different from this; this rule is specifically about launching either skill or equivalent multi-agent review flows without being asked.
 
 ## Comments must stand alone
 
@@ -39,8 +39,6 @@ Code that works correctly can still have a genuine, articulable maintainability 
 ## Definition of done includes a self-review pass
 
 "Correct" and "clean enough that a reviewer wouldn't need to ask for changes" are two separate bars — a task isn't done until both are met. Don't treat cleanliness as a follow-up step that happens after the user reviews and pushes back on it; self-review happens before the work is presented, the same way TDD's refactor step (Beck, *Test-Driven Development: By Example*) happens before a change counts as finished, not after someone else flags it.
-
-Concretely: after implementing a nontrivial change, run `/simplify` on it before presenting the work as complete — proactively, not only when asked. This is separate from the `/code-review` restriction above: `/simplify` is quality-only (reuse, simplification, efficiency, altitude) and doesn't hunt for bugs, so it isn't gated the same way — `/code-review` still needs an explicit ask each turn.
 
 A caution against over-decomposition — Ousterhout's deep-module argument against shallow modules, *A Philosophy of Software Design* — is never sufficient justification, by itself, to leave large or tangled code unrefactored. It only applies when backed by something concrete and specific to the case at hand, not as a default response to a cleanup request, and not as a reason to skip the self-review pass above.
 
