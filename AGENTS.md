@@ -28,6 +28,33 @@ This is a serious, deliberate engineering effort, not a move-fast-and-skip-revie
 
 When asked a clarifying or double-checking question mid-implementation, answer it directly and plainly. Don't frame the answer around how settled the plan is, how far along implementation has gotten, or whether the question was "necessary" — treat it as a normal part of ongoing code review, not friction to get past, regardless of how much work already happened before the question was asked.
 
+## Plan mode stays under developer control
+
+Entering plan mode for a new feature is the developer's call, not something to start on your own.
+
+Approving a plan means:
+- agreeing to start — not approving every piece of implementation in it
+- accepting the design as a starting point, not a frozen spec — expect it to shift as work uncovers things the plan couldn't have anticipated
+
+Approving a plan does not mean:
+- starting the next slice without being told to — the conversation continuing is not the same as being told to continue
+- writing the plan up as a ticket — that needs its own separate ask
+
+## Slicing a feature plan
+
+Once you're in plan mode, break the feature into small, independently verifiable slices as part of the plan.
+
+A slice is a demonstrable piece of the feature's behavior, not a layer of the system — "the model," "the router," and "the tests" are not slices on their own. Each slice needs:
+- a clear boundary
+- a specific expected outcome
+- its own way to prove it works, checked against real code or an agreed contract — for example, a router slice can be verified with its own router test against a real test database, without needing the frontend to actually consume the endpoint
+
+Slices don't have to depend on each other — "create goal" and "delete goal" are both valid slices of the same feature; verifying delete just needs a goal to already exist (seeded for the test), not the create slice itself to be built. Some genuinely do depend, though: "email a reminder for goals due today" needs a due-date field that doesn't exist on the Goal model yet — that can't be faked with test data, since there's no column to put a value into until an earlier slice adds it and migrates the table.
+
+A simple test: if there's no way to satisfy the dependency short of writing the actual change the other slice is supposed to deliver, it's a real dependency. If a fixture or a seeded row would do instead, it isn't — the seeded-goal case above is independent by this same test, since the fixture satisfies verification without anyone writing the real create-goal slice.
+
+What counts as "small enough" is a judgment call, not a formula — work it out with the developer per feature rather than applying a fixed rule.
+
 ## Surface scope mismatches
 
 If your own implementation instincts imply scope beyond what was explicitly asked for or written in a ticket (a new capability, not just an implementation detail), raise that mismatch for discussion at the time — don't silently decide solo whether to keep the extra scope or trim back to the literal ask. Concrete trigger: if you catch yourself writing code that only makes sense if some capability exists, and that capability wasn't actually requested, stop and name the gap out loud before choosing to build it or cut it.
