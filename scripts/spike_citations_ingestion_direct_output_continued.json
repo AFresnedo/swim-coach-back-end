@@ -1,0 +1,28 @@
+{
+  "id": "msg_011CeRfCE6mkMNnyPoRWhYme",
+  "content": [
+    {
+      "citations": null,
+      "text": "Let me know if you'd like a full technique-focused practice set built around these catch drills, or tips on diagnosing your specific catch issues (e.g., dropped elbow vs. crossing over).",
+      "type": "text"
+    }
+  ],
+  "model": "claude-sonnet-5",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 52130,
+    "output_tokens": 64,
+    "service_tier": "standard"
+  }
+}
