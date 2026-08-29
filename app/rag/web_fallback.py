@@ -138,18 +138,17 @@ class WebFallbackResult:
     fetched_pages: list[FetchedPage]
 
 
+def _is_fetch(block: Any) -> bool:
+    return block.type == "web_fetch_tool_result" and block.content.type == "web_fetch_result"
+
+
 def _is_text_fetch(block: Any) -> bool:
-    return (
-        block.type == "web_fetch_tool_result"
-        and block.content.type == "web_fetch_result"
-        and block.content.content.source.type == "text"
-    )
+    return _is_fetch(block) and block.content.content.source.type == "text"
 
 
 def _is_pdf_fetch(block: Any) -> bool:
     return (
-        block.type == "web_fetch_tool_result"
-        and block.content.type == "web_fetch_result"
+        _is_fetch(block)
         and block.content.content.source.type == "base64"
         and block.content.content.source.media_type == "application/pdf"
     )
@@ -183,8 +182,12 @@ def _fetched_urls_in_order(content: list[Any]) -> list[str]:
     """CitationCharLocation.document_index refers to a position in this same
     order - the order the API returned fetched documents in, which is also
     the only order citations can reference since citations are enabled only
-    on web_fetch (not web_search) in this call."""
-    return [block.content.url for block in content if _is_text_fetch(block)]
+    on web_fetch (not web_search) in this call. Every web_fetch result counts
+    as a document slot for this indexing, text and PDF alike (a PDF page is
+    just cited with a different location type, page_location, rather than
+    char_location) - filtering this list down to text-only fetches would
+    shift every index after a PDF fetch onto the wrong URL."""
+    return [block.content.url for block in content if _is_fetch(block)]
 
 
 def _cited_url(citation: Any, document_urls: list[str]) -> str | None:

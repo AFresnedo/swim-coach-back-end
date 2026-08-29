@@ -123,6 +123,24 @@ def test_answer_with_web_fallback_pairs_candidates_with_fetched_text():
     assert page.skill_level == "intermediate"
 
 
+def test_answer_with_web_fallback_resolves_char_citation_after_a_pdf_fetch():
+    # The PDF fetch still occupies a document_index slot even though its text
+    # isn't in document_urls's text-only sibling map - the char_location
+    # citation below (index 1) must resolve to the *second* fetched document,
+    # not skip over the PDF and land on the wrong URL.
+    content = [
+        _pdf_fetch_block("https://swimswam.com/paper.pdf", _VALID_PDF_BYTES),
+        _fetch_block("https://swimswam.com/catch", "Full page text about the catch."),
+        _text_block("Keep the elbow up.", citations=[_char_citation(1)]),
+    ]
+    response = MagicMock(content=content)
+
+    with patch("app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)):
+        result = answer_with_web_fallback("how do I improve my catch?")
+
+    assert result.sources == ["https://swimswam.com/catch"]
+
+
 def test_answer_with_web_fallback_collects_search_snippet_citations_too():
     content = [
         _text_block("Answer citing a search snippet directly."),
