@@ -9,7 +9,14 @@ import base64
 from dataclasses import dataclass
 from typing import Any
 
-from anthropic.types import ToolParam, ToolUnionParam, WebFetchTool20260209Param, WebSearchTool20260209Param
+from anthropic.types import (
+    MessageParam,
+    ToolParam,
+    ToolResultBlockParam,
+    ToolUnionParam,
+    WebFetchTool20260209Param,
+    WebSearchTool20260209Param,
+)
 
 from app.config import settings
 from app.enums import STROKES
@@ -254,19 +261,61 @@ def _extract_fetched_pages(content: list[Any]) -> list[FetchedPage]:
     return pages
 
 
-def answer_with_web_fallback(question: str) -> WebFallbackResult:
-    """Card step 4: search + fetch from ALLOWED_WEB_DOMAINS and answer
-    grounded in what was found. The caller only takes this path once
-    retrieval (and the optional Step 3b rescue) both miss."""
+def _continue_after_tool_use(response: Any, messages: list[MessageParam], tools: list[ToolUnionParam]) -> Any:
+    """Confirmed necessary by scripts/spike_citations_ingestion_direct.py: the
+    model doesn't reliably write its swimmer-facing answer before calling
+    submit_ingestion_candidates, even though the system prompt asks for that
+    order. stop_reason "tool_use" means the API has paused the turn waiting
+    on a tool_result for that call - the real answer, citations included,
+    isn't necessarily in `response` yet and only shows up once we send a
+    tool_result back and continue."""
+    tool_results: list[ToolResultBlockParam] = [
+        {"type": "tool_result", "tool_use_id": block.id, "content": "Candidates recorded."}
+        for block in response.content
+        if block.type == "tool_use"
+    ]
+    messages.append({"role": "assistant", "content": response.content})
+    messages.append({"role": "user", "content": tool_results})
+
+    # Not expected to ever be set under allowed_callers: direct (that's what
+    # sidesteps the code-execution container in the first place), but the
+    # confirming spike checked for it defensively, so this does too.
+    continuation_kwargs: dict[str, Any] = {}
+    if response.container is not None:
+        continuation_kwargs["container"] = response.container.id
+
     with anthropic_client.messages.stream(
         model=settings.coach_model,
         max_tokens=MAX_FALLBACK_TOKENS,
         system=_SYSTEM_PROMPT,
-        tools=_tools(),
-        messages=[{"role": "user", "content": question}],
+        tools=tools,
+        messages=messages,
+        **continuation_kwargs,
+    ) as stream:
+        return stream.get_final_message()
+
+
+def answer_with_web_fallback(question: str) -> WebFallbackResult:
+    """Card step 4: search + fetch from ALLOWED_WEB_DOMAINS and answer
+    grounded in what was found. The caller only takes this path once
+    retrieval (and the optional Step 3b rescue) both miss."""
+    messages: list[MessageParam] = [{"role": "user", "content": question}]
+    tools = _tools()
+
+    with anthropic_client.messages.stream(
+        model=settings.coach_model,
+        max_tokens=MAX_FALLBACK_TOKENS,
+        system=_SYSTEM_PROMPT,
+        tools=tools,
+        messages=messages,
     ) as stream:
         response = stream.get_final_message()
 
-    answer, sources = _extract_answer_and_sources(response.content)
-    fetched_pages = _extract_fetched_pages(response.content)
+    full_content = list(response.content)
+    if response.stop_reason == "tool_use":
+        continuation = _continue_after_tool_use(response, messages, tools)
+        full_content += continuation.content
+
+    answer, sources = _extract_answer_and_sources(full_content)
+    fetched_pages = _extract_fetched_pages(full_content)
     return WebFallbackResult(answer=answer, sources=sources, fetched_pages=fetched_pages)

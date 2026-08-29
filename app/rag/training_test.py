@@ -2,10 +2,15 @@ from unittest.mock import MagicMock, patch
 
 from app.rag.retrieval import RetrievedChunk
 from app.rag.training import ask_training
+from app.rag.web_fallback import WebFallbackResult
 
 
 def _chunk(similarity: float):
     return RetrievedChunk(chunk=MagicMock(source_url="https://example.com"), similarity=similarity)
+
+
+def _fallback_result(answer: str = "General web-fallback answer.", sources: list[str] | None = None):
+    return WebFallbackResult(answer=answer, sources=sources or [], fetched_pages=[])
 
 
 def _mock_profile_lookup(db: MagicMock, profile: MagicMock | None) -> None:
@@ -38,7 +43,7 @@ def test_ask_training_answers_from_knowledge_base_on_hit():
     assert result.answered_from_knowledge_base is True
 
 
-def test_ask_training_skips_sharpen_and_returns_no_match_when_fallback_disabled():
+def test_ask_training_skips_sharpen_and_falls_back_to_web_when_sharpen_disabled():
     db = MagicMock()
     first_pass_chunk = _chunk(0.5)
 
@@ -49,6 +54,11 @@ def test_ask_training_skips_sharpen_and_returns_no_match_when_fallback_disabled(
         patch("app.rag.training.answer_from_knowledge") as mock_answer,
         patch("app.rag.training.sharpen_question") as mock_sharpen,
         patch("app.rag.training.is_sharpen_enabled", return_value=False),
+        patch(
+            "app.rag.training.answer_with_web_fallback",
+            return_value=_fallback_result(sources=["https://swimswam.com/catch"]),
+        ) as mock_fallback,
+        patch("app.rag.training.ingest_fetched_pages") as mock_ingest,
         patch("app.rag.training.settings") as mock_settings,
     ):
         mock_settings.similarity_threshold = 0.75
@@ -58,11 +68,14 @@ def test_ask_training_skips_sharpen_and_returns_no_match_when_fallback_disabled(
     mock_answer.assert_not_called()
     mock_embed.assert_called_once()
     mock_search.assert_called_once()
+    mock_fallback.assert_called_once_with("cleaned question")
+    mock_ingest.assert_called_once_with(db, source_query="cleaned question", pages=[])
+    assert result.answer == "General web-fallback answer."
     assert result.answered_from_knowledge_base is False
-    assert result.sources == []
+    assert result.sources == ["https://swimswam.com/catch"]
 
 
-def test_ask_training_returns_no_match_answer_when_kb_empty():
+def test_ask_training_falls_back_to_web_when_kb_empty():
     db = MagicMock()
     with (
         patch("app.rag.training.clean_question", return_value="cleaned question"),
@@ -70,11 +83,17 @@ def test_ask_training_returns_no_match_answer_when_kb_empty():
         patch("app.rag.training.search_swim_knowledge", return_value=[]),
         patch("app.rag.training.answer_from_knowledge") as mock_answer,
         patch("app.rag.training.is_sharpen_enabled", return_value=False),
+        patch("app.rag.training.answer_with_web_fallback", return_value=_fallback_result()) as mock_fallback,
+        patch("app.rag.training.ingest_fetched_pages") as mock_ingest,
     ):
         result = ask_training(db, user_id=1, raw_question="anything")
 
     mock_answer.assert_not_called()
+    mock_fallback.assert_called_once_with("cleaned question")
+    mock_ingest.assert_called_once_with(db, source_query="cleaned question", pages=[])
+    assert result.answer == "General web-fallback answer."
     assert result.answered_from_knowledge_base is False
+    assert result.sources == []
 
 
 def test_ask_training_sharpen_rescue_flips_miss_to_hit_when_enabled():
@@ -109,7 +128,7 @@ def test_ask_training_sharpen_rescue_flips_miss_to_hit_when_enabled():
     assert result.sources == ["https://example.com"]
 
 
-def test_ask_training_sharpen_rescue_still_misses_returns_no_match():
+def test_ask_training_sharpen_rescue_still_misses_falls_back_to_web():
     db = MagicMock()
     _mock_profile_lookup(db, None)
     first_pass_chunk = _chunk(0.5)
@@ -123,11 +142,15 @@ def test_ask_training_sharpen_rescue_still_misses_returns_no_match():
         patch("app.rag.training.sharpen_question", return_value="sharpened question"),
         patch("app.rag.training.answer_from_knowledge") as mock_answer,
         patch("app.rag.training.is_sharpen_enabled", return_value=True),
+        patch("app.rag.training.answer_with_web_fallback", return_value=_fallback_result()) as mock_fallback,
+        patch("app.rag.training.ingest_fetched_pages") as mock_ingest,
         patch("app.rag.training.settings") as mock_settings,
     ):
         mock_settings.similarity_threshold = 0.75
         result = ask_training(db, user_id=1, raw_question="still vague")
 
     mock_answer.assert_not_called()
+    mock_fallback.assert_called_once_with("sharpened question")
+    mock_ingest.assert_called_once_with(db, source_query="sharpened question", pages=[])
     assert result.answered_from_knowledge_base is False
     assert result.sources == []

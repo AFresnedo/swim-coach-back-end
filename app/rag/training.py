@@ -9,12 +9,12 @@ from app.config import settings
 from app.profile.model import Profile
 from app.rag.answer import answer_from_knowledge
 from app.rag.embeddings import embed_query
+from app.rag.ingest import ingest_fetched_pages
 from app.rag.query import clean_question
 from app.rag.retrieval import RetrievedChunk, fetch_active_goals, search_swim_knowledge
 from app.rag.sharpen import sharpen_question
 from app.rag.sharpen_flag import is_sharpen_enabled
-
-_NO_MATCH_ANSWER = "I don't have enough information in the knowledge base to answer this confidently."
+from app.rag.web_fallback import answer_with_web_fallback
 
 
 @dataclass(frozen=True)
@@ -45,4 +45,6 @@ def ask_training(db: Session, *, user_id: int, raw_question: str) -> TrainingAns
         sources = [result.chunk.source_url for result in results]
         return TrainingAnswer(answer=answer, answered_from_knowledge_base=True, sources=sources)
 
-    return TrainingAnswer(answer=_NO_MATCH_ANSWER, answered_from_knowledge_base=False, sources=[])
+    fallback = answer_with_web_fallback(question)
+    ingest_fetched_pages(db, source_query=question, pages=fallback.fetched_pages)
+    return TrainingAnswer(answer=fallback.answer, answered_from_knowledge_base=False, sources=fallback.sources)
