@@ -39,3 +39,13 @@ class RagSettings(BaseSettings):
     # to be Haiku 4.5; that will change, which is exactly why this is a setting
     # instead of a hardcoded model id.
     sharpen_model: Literal["claude-haiku-4-5"] = "claude-haiku-4-5"
+
+    # Off by default: web_fetch returns a fetched PDF as a base64 document
+    # rather than text (Anthropic's web fetch tool docs - PDFs are passed
+    # through like a directly-attached document, never converted to text
+    # server-side), so turning this on adds a synchronous pdfminer.six parse
+    # to the /training/ask request that triggered the fallback. A static,
+    # restart-required setting rather than a Redis runtime flag like
+    # sharpen_flag.py's: this has no fail-closed path of its own to write or
+    # test, and nothing about this feature needs flipping without a redeploy.
+    pdf_extraction_enabled: bool = False

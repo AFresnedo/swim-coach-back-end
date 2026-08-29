@@ -16,6 +16,7 @@ def test_accepts_a_valid_payload():
     assert settings.sharpen_model == "claude-haiku-4-5"
     assert settings.similarity_threshold == 0.75
     assert settings.max_web_ingestions_per_query == 2
+    assert settings.pdf_extraction_enabled is False
 
 
 def test_rejects_coach_model_outside_the_allowed_literal():

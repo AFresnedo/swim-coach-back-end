@@ -34,3 +34,21 @@ def embed_query(text: str) -> list[float]:
     # this is always float at runtime, but the coercion is what makes that
     # true for pyright too, not just for us.
     return [float(value) for value in result.embeddings[0]]
+
+
+def embed_documents(texts: list[str]) -> list[list[float]]:
+    """Embed chunked knowledge-base content for storage in SwimKnowledge
+    (card step 4's ingestion). input_type="document" is the other side of the
+    asymmetric-embedding pair from embed_query above - ingested chunks must
+    use this side so a short query still lands close to the longer passage
+    that answers it.
+    """
+    if not texts:
+        return []
+    result = voyage_client.embed(
+        texts,
+        model=VOYAGE_EMBED_MODEL,
+        input_type="document",
+        output_dimension=EMBEDDING_DIMENSION,
+    )
+    return [[float(value) for value in embedding] for embedding in result.embeddings]
