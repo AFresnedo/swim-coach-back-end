@@ -9,6 +9,8 @@ import base64
 from dataclasses import dataclass
 from typing import Any
 
+from anthropic.types import ToolParam, ToolUnionParam, WebFetchTool20260209Param, WebSearchTool20260209Param
+
 from app.config import settings
 from app.enums import STROKES
 from app.rag.clients import anthropic_client
@@ -44,7 +46,7 @@ def _nullable_enum(values: tuple[str, ...]) -> dict[str, Any]:
     return {"anyOf": [{"type": "string", "enum": list(values)}, {"type": "null"}]}
 
 
-_SUBMIT_CANDIDATES_TOOL = {
+_SUBMIT_CANDIDATES_TOOL: ToolParam = {
     "name": _SUBMIT_CANDIDATES_TOOL_NAME,
     "description": (
         "Submit knowledge-base ingestion candidates for pages you fetched while "
@@ -87,7 +89,7 @@ _SUBMIT_CANDIDATES_TOOL = {
 }
 
 
-def _tools() -> list[dict[str, Any]]:
+def _tools() -> list[ToolUnionParam]:
     # allowed_callers: ["direct"] is required on both server tools, not
     # incidental: left unset, web_search_20260209/web_fetch_20260209 default
     # to routing through an internal code-execution caller, which silently
@@ -96,27 +98,25 @@ def _tools() -> list[dict[str, Any]]:
     # continuing the turn past this module's submit_ingestion_candidates
     # tool_use (the API rejects it with a 400 needing a container_id that
     # code-execution-routed calls never actually returned).
-    return [
-        {
-            "type": "web_search_20260209",
-            "name": "web_search",
-            "max_uses": MAX_WEB_SEARCHES,
-            "allowed_domains": list(ALLOWED_WEB_DOMAINS),
-            "allowed_callers": ["direct"],
-        },
-        {
-            "type": "web_fetch_20260209",
-            "name": "web_fetch",
-            # Doubles as the ingestion guardrails checklist's "max N
-            # ingestions per query" cap: every SwimKnowledge write this step
-            # can produce traces back to a page that was fetched here.
-            "max_uses": settings.max_web_ingestions_per_query,
-            "allowed_domains": list(ALLOWED_WEB_DOMAINS),
-            "citations": {"enabled": True},
-            "allowed_callers": ["direct"],
-        },
-        _SUBMIT_CANDIDATES_TOOL,
-    ]
+    web_search_tool: WebSearchTool20260209Param = {
+        "type": "web_search_20260209",
+        "name": "web_search",
+        "max_uses": MAX_WEB_SEARCHES,
+        "allowed_domains": list(ALLOWED_WEB_DOMAINS),
+        "allowed_callers": ["direct"],
+    }
+    web_fetch_tool: WebFetchTool20260209Param = {
+        "type": "web_fetch_20260209",
+        "name": "web_fetch",
+        # Doubles as the ingestion guardrails checklist's "max N
+        # ingestions per query" cap: every SwimKnowledge write this step
+        # can produce traces back to a page that was fetched here.
+        "max_uses": settings.max_web_ingestions_per_query,
+        "allowed_domains": list(ALLOWED_WEB_DOMAINS),
+        "citations": {"enabled": True},
+        "allowed_callers": ["direct"],
+    }
+    return [web_search_tool, web_fetch_tool, _SUBMIT_CANDIDATES_TOOL]
 
 
 @dataclass(frozen=True)
