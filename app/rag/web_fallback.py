@@ -36,15 +36,20 @@ MAX_WEB_SEARCHES = 3
 _SUBMIT_CANDIDATES_TOOL_NAME = "submit_ingestion_candidates"
 
 # Fetching must be required, not left optional - an optional web_fetch lets
-# the model reasonably answer from search snippets alone and skip ingestion
-# entirely, defeating the KB's self-improvement loop.
+# the model skip it entirely and defeat the KB's self-improvement loop.
+# Deliberately not "never answer from search snippets alone": search doing the
+# best it can within the vetted domain allowlist is the actual design here,
+# and the fetch is required so there's always at least one full-page
+# candidate for the knowledge base, not because every claim in the answer
+# must be fetch-grounded - the model is free to cite other search results too.
 _SYSTEM_PROMPT = """You are a swim coach assistant answering a training question using \
-live web search, restricted to a vetted set of swim-coaching sources. Search first, \
-then use web_fetch to retrieve the full content of at least one of the most relevant \
-pages you found - never answer from search snippets alone, always fetch at least one \
-page for the full detail. Answer the swimmer's question grounded in what you fetched. \
-After answering, call submit_ingestion_candidates once, listing every page you fetched \
-that's worth keeping in a knowledge base for future questions."""
+live web search, restricted to a vetted set of swim-coaching sources. Search first, then \
+use web_fetch on at least one of the most relevant pages you found, regardless of whether \
+the search results alone would already answer the question - its full content is needed \
+as a knowledge-base candidate. Answer the swimmer's question using whichever combination \
+of the search results and fetched content best supports it, and cite your sources. After \
+answering, call submit_ingestion_candidates once, listing every page you fetched that's \
+worth keeping in a knowledge base for future questions."""
 
 
 def _nullable_enum(values: tuple[str, ...]) -> dict[str, Any]:
@@ -139,9 +144,24 @@ class FetchedPage:
 
 
 @dataclass(frozen=True)
+class CitedSource:
+    """A source the model cited in its answer. `fetched` records which
+    citation type produced it: a char_location citation (this module actually
+    pulled the page's full content via web_fetch) versus a
+    web_search_result_location citation (the model saw this URL in a search
+    result, never fetched here). Both are valid, equally-domain-vetted
+    citations by design (see _SYSTEM_PROMPT) - `fetched` isn't a trust or
+    quality signal, just a fact worth keeping rather than discarding now that
+    it's already known."""
+
+    url: str
+    fetched: bool
+
+
+@dataclass(frozen=True)
 class WebFallbackResult:
     answer: str
-    sources: list[str]
+    sources: list[CitedSource]
     fetched_pages: list[FetchedPage]
 
 
@@ -197,38 +217,46 @@ def _fetched_urls_in_order(content: list[Any]) -> list[str]:
     return [block.content.url for block in content if _is_fetch(block)]
 
 
-def _cited_url(citation: Any, document_urls: list[str]) -> str | None:
+def _cited_source(citation: Any, document_urls: list[str]) -> CitedSource | None:
     # Two citation types can appear here: char_location points into a fetched
     # document by document_index, resolved against document_urls (the only
     # order that index can mean, since citations are enabled only on
-    # web_fetch in this call). web_search_result_location already carries its
-    # own url - the system prompt tells the model to always fetch and answer
-    # from that, not from search snippets, but nothing at the API level stops
-    # it from citing a snippet directly anyway, so both are handled.
+    # web_fetch in this call) - fetched=True records that this module pulled
+    # the page's full content. web_search_result_location already carries its
+    # own url - citing a snippet directly is expected and allowed by design
+    # (see _SYSTEM_PROMPT), so it's tracked the same way but with
+    # fetched=False.
     if citation.type == "char_location" and citation.document_index < len(document_urls):
-        return document_urls[citation.document_index]
+        return CitedSource(url=document_urls[citation.document_index], fetched=True)
     if citation.type == "web_search_result_location":
-        return citation.url
+        return CitedSource(url=citation.url, fetched=False)
     return None
 
 
-def _extract_answer_and_sources(content: list[Any]) -> tuple[str, list[str]]:
+def _extract_answer_and_sources(content: list[Any]) -> tuple[str, list[CitedSource]]:
     """The API splits one continuous answer into multiple text blocks at
     citation boundaries - concatenating every text block's .text in order
     reproduces exactly what an uncited response would have read, so no
     separator belongs between them."""
     document_urls = _fetched_urls_in_order(content)
     answer_parts = []
-    source_urls: dict[str, None] = {}
+    sources_by_url: dict[str, CitedSource] = {}
     for block in content:
         if block.type != "text":
             continue
         answer_parts.append(block.text)
         for citation in block.citations or []:
-            url = _cited_url(citation, document_urls)
-            if url is not None:
-                source_urls[url] = None
-    return "".join(answer_parts), list(source_urls)
+            source = _cited_source(citation, document_urls)
+            if source is None:
+                continue
+            existing = sources_by_url.get(source.url)
+            # A URL cited once via a fetched document and again via a search
+            # snippet keeps fetched=True - the fact that this module actually
+            # fetched it doesn't get erased just because a later citation for
+            # the same URL happened to be the search-snippet kind.
+            if existing is None or (source.fetched and not existing.fetched):
+                sources_by_url[source.url] = source
+    return "".join(answer_parts), list(sources_by_url.values())
 
 
 def _extract_fetched_pages(content: list[Any]) -> list[FetchedPage]:

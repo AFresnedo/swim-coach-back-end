@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 from app.config import settings
 from app.rag.models import ALLOWED_WEB_DOMAINS
-from app.rag.web_fallback import answer_with_web_fallback
+from app.rag.web_fallback import CitedSource, answer_with_web_fallback
 
 # A minimal hand-built single-page PDF containing the text "Hello World" -
 # enough to exercise a real pdfminer parse without depending on a fixture file.
@@ -120,7 +120,7 @@ def test_answer_with_web_fallback_reconstructs_answer_and_sources():
         result = answer_with_web_fallback("how do I improve my catch?")
 
     assert result.answer == "Try a high-elbow catch. Keep the elbow up."
-    assert result.sources == ["https://swimswam.com/catch"]
+    assert result.sources == [CitedSource(url="https://swimswam.com/catch", fetched=True)]
 
 
 def test_answer_with_web_fallback_pairs_candidates_with_fetched_text():
@@ -210,7 +210,7 @@ def test_answer_with_web_fallback_resolves_char_citation_after_a_pdf_fetch():
     with patch("app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)):
         result = answer_with_web_fallback("how do I improve my catch?")
 
-    assert result.sources == ["https://swimswam.com/catch"]
+    assert result.sources == [CitedSource(url="https://swimswam.com/catch", fetched=True)]
 
 
 def test_answer_with_web_fallback_collects_search_snippet_citations_too():
@@ -223,7 +223,42 @@ def test_answer_with_web_fallback_collects_search_snippet_citations_too():
     with patch("app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)):
         result = answer_with_web_fallback("question")
 
-    assert result.sources == ["https://swimmingworldmagazine.com/tip"]
+    assert result.sources == [CitedSource(url="https://swimmingworldmagazine.com/tip", fetched=False)]
+
+
+def test_answer_with_web_fallback_keeps_fetched_true_when_same_url_also_cited_as_snippet():
+    content = [
+        _fetch_block("https://swimswam.com/catch", "Full page text about the catch."),
+        _text_block("Try a high-elbow catch.", citations=[_char_citation(0)]),
+        _text_block(
+            " Also covered elsewhere.", citations=[_search_result_citation("https://swimswam.com/catch")]
+        ),
+    ]
+    response = MagicMock(content=content, stop_reason="end_turn")
+
+    with patch("app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)):
+        result = answer_with_web_fallback("question")
+
+    assert result.sources == [CitedSource(url="https://swimswam.com/catch", fetched=True)]
+
+
+def test_answer_with_web_fallback_reports_mixed_fetched_and_snippet_sources():
+    content = [
+        _fetch_block("https://swimswam.com/catch", "Full page text about the catch."),
+        _text_block("Try a high-elbow catch.", citations=[_char_citation(0)]),
+        _text_block(
+            " Also see this tip.", citations=[_search_result_citation("https://swimmingworldmagazine.com/tip")]
+        ),
+    ]
+    response = MagicMock(content=content, stop_reason="end_turn")
+
+    with patch("app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)):
+        result = answer_with_web_fallback("question")
+
+    assert result.sources == [
+        CitedSource(url="https://swimswam.com/catch", fetched=True),
+        CitedSource(url="https://swimmingworldmagazine.com/tip", fetched=False),
+    ]
 
 
 def test_answer_with_web_fallback_drops_candidate_with_no_matching_fetch():

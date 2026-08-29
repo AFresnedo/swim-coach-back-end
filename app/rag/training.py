@@ -47,4 +47,6 @@ def ask_training(db: Session, *, user_id: int, raw_question: str) -> TrainingAns
 
     fallback = answer_with_web_fallback(question)
     ingest_fetched_pages(db, source_query=question, pages=fallback.fetched_pages)
-    return TrainingAnswer(answer=fallback.answer, answered_from_knowledge_base=False, sources=fallback.sources)
+    # Flattens to plain URLs on purpose - anything else on CitedSource is dropped, not lost (still on fallback.sources).
+    sources = [source.url for source in fallback.sources]
+    return TrainingAnswer(answer=fallback.answer, answered_from_knowledge_base=False, sources=sources)

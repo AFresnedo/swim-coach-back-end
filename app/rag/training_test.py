@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from app.rag.retrieval import RetrievedChunk
 from app.rag.training import ask_training
-from app.rag.web_fallback import WebFallbackResult
+from app.rag.web_fallback import CitedSource, WebFallbackResult
 
 
 def _chunk(similarity: float):
@@ -10,7 +10,8 @@ def _chunk(similarity: float):
 
 
 def _fallback_result(answer: str = "General web-fallback answer.", sources: list[str] | None = None):
-    return WebFallbackResult(answer=answer, sources=sources or [], fetched_pages=[])
+    cited_sources = [CitedSource(url=url, fetched=True) for url in (sources or [])]
+    return WebFallbackResult(answer=answer, sources=cited_sources, fetched_pages=[])
 
 
 def _mock_profile_lookup(db: MagicMock, profile: MagicMock | None) -> None:
