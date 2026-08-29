@@ -277,20 +277,12 @@ def _continue_after_tool_use(response: Any, messages: list[MessageParam], tools:
     messages.append({"role": "assistant", "content": response.content})
     messages.append({"role": "user", "content": tool_results})
 
-    # Not expected to ever be set under allowed_callers: direct (that's what
-    # sidesteps the code-execution container in the first place), but the
-    # confirming spike checked for it defensively, so this does too.
-    continuation_kwargs: dict[str, Any] = {}
-    if response.container is not None:
-        continuation_kwargs["container"] = response.container.id
-
     with anthropic_client.messages.stream(
         model=settings.coach_model,
         max_tokens=MAX_FALLBACK_TOKENS,
         system=_SYSTEM_PROMPT,
         tools=tools,
         messages=messages,
-        **continuation_kwargs,
     ) as stream:
         return stream.get_final_message()
 
