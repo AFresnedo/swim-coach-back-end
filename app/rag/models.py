@@ -31,6 +31,32 @@ QUALITY_FLAGS: tuple[str, ...] = get_args(QualityFlagLiteral)
 TOPIC_CATEGORIES: tuple[str, ...] = get_args(TopicCategoryLiteral)
 SKILL_LEVELS: tuple[str, ...] = get_args(SkillLevelLiteral)
 
+# Vetted sources for the card step 4 web-search fallback's allowed_domains
+# restriction on the web_search/web_fetch tool definitions. A plain code
+# constant rather than a RagSettings field on purpose: unlike a tuning knob
+# (similarity_threshold, max_web_ingestions_per_query) where a bad value just
+# degrades quality until someone notices, a bad value here means the fetch
+# tool reads and ingests content from an unvetted domain straight into a
+# knowledge base other users' queries later retrieve from - a trust-boundary
+# mistake, not a quality one. It should require a reviewed code change to
+# widen, the same way app/main.py hardcodes TrustedHostMiddleware's
+# allowed_hosts rather than sourcing it from settings. Entries are bare
+# hostnames with no scheme and no path: web_fetch (unlike web_search) matches
+# on domain only, so a path suffix would silently never restrict a fetch -
+# keeping every entry path-free keeps both tools' filtering identical.
+ALLOWED_WEB_DOMAINS: tuple[str, ...] = (
+    "usaswimming.org",
+    "worldaquatics.com",
+    "swimming.org",
+    "swimmingcoach.org",
+    "swimswam.com",
+    "swimmingworldmagazine.com",
+    "swimsmooth.com",
+    "effortlessswimming.com",
+    "ncbi.nlm.nih.gov",
+    "nsca.com",
+)
+
 
 class KnowledgeChunkMixin:
     """Shared columns for pgvector-backed knowledge-base tables.
