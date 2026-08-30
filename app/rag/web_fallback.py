@@ -6,7 +6,6 @@ endpoint" Trello card).
 """
 
 import base64
-from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,12 +20,10 @@ from anthropic.types import (
 
 from app.config import settings
 from app.enums import STROKES
-from app.goal.model import Goal
-from app.profile.model import Profile
 from app.rag.clients import anthropic_client
 from app.rag.models import ALLOWED_WEB_DOMAINS, QUALITY_FLAGS, SKILL_LEVELS, TOPIC_CATEGORIES
 from app.rag.pdf_extract import extract_pdf_text
-from app.rag.swimmer_context import build_swimmer_context
+from app.rag.swimmer_context import SwimmerContext, build_swimmer_context
 
 # Matches the value the confirming spike (see the card's step 4) ran
 # successfully with - a starting value, not a tuned one.
@@ -327,11 +324,11 @@ def _continue_after_tool_use(
         return stream.get_final_message()
 
 
-def answer_with_web_fallback(question: str, *, profile: Profile | None, goals: Sequence[Goal]) -> WebFallbackResult:
+def answer_with_web_fallback(question: str, *, swimmer: SwimmerContext) -> WebFallbackResult:
     """Card step 4: search + fetch from ALLOWED_WEB_DOMAINS and answer
     grounded in what was found. The caller only takes this path once
     retrieval (and the optional Step 3b rescue) both miss."""
-    system = _SYSTEM_PROMPT_TEMPLATE.format(swimmer_context=build_swimmer_context(profile, goals))
+    system = _SYSTEM_PROMPT_TEMPLATE.format(swimmer_context=build_swimmer_context(swimmer))
     messages: list[MessageParam] = [{"role": "user", "content": question}]
     tools = _tools()
 

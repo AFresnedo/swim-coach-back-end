@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, patch
 
+from app.goal.model import Goal
 from app.rag.retrieval import RetrievedChunk
+from app.rag.swimmer_context import SwimmerContext
 from app.rag.training import ask_training
 from app.rag.web_fallback import CitedSource, WebFallbackResult
 
@@ -71,7 +73,7 @@ def test_ask_training_skips_sharpen_and_falls_back_to_web_when_sharpen_disabled(
     mock_answer.assert_not_called()
     mock_embed.assert_called_once()
     mock_search.assert_called_once()
-    mock_fallback.assert_called_once_with("cleaned question", profile=None, goals=[])
+    mock_fallback.assert_called_once_with("cleaned question", swimmer=SwimmerContext(profile=None, goals=[]))
     mock_ingest.assert_called_once_with(db, source_query="cleaned question", pages=[])
     assert result.answer == "General web-fallback answer."
     assert result.answered_from_knowledge_base is False
@@ -94,7 +96,7 @@ def test_ask_training_falls_back_to_web_when_kb_empty():
         result = ask_training(db, user_id=1, raw_question="anything")
 
     mock_answer.assert_not_called()
-    mock_fallback.assert_called_once_with("cleaned question", profile=None, goals=[])
+    mock_fallback.assert_called_once_with("cleaned question", swimmer=SwimmerContext(profile=None, goals=[]))
     mock_ingest.assert_called_once_with(db, source_query="cleaned question", pages=[])
     assert result.answer == "General web-fallback answer."
     assert result.answered_from_knowledge_base is False
@@ -105,6 +107,7 @@ def test_ask_training_sharpen_rescue_flips_miss_to_hit_when_enabled():
     db = MagicMock()
     fake_profile = MagicMock()
     _mock_profile_lookup(db, fake_profile)
+    fake_goal = Goal(user_id=1, text="sub-60 100 free", is_active=True)
     first_pass_chunk = _chunk(0.5)
     rescued_chunk = _chunk(0.95)
 
@@ -114,7 +117,7 @@ def test_ask_training_sharpen_rescue_flips_miss_to_hit_when_enabled():
         patch(
             "app.rag.training.search_swim_knowledge", side_effect=[[first_pass_chunk], [rescued_chunk]]
         ) as mock_search,
-        patch("app.rag.training.fetch_active_goals", return_value=["goal"]) as mock_goals,
+        patch("app.rag.training.fetch_active_goals", return_value=[fake_goal]) as mock_goals,
         patch("app.rag.training.sharpen_question", return_value="sharpened question") as mock_sharpen,
         patch("app.rag.training.answer_from_knowledge", return_value="Sharpened answer.") as mock_answer,
         patch("app.rag.training.is_sharpen_enabled", return_value=True),
@@ -123,11 +126,12 @@ def test_ask_training_sharpen_rescue_flips_miss_to_hit_when_enabled():
         mock_settings.similarity_threshold = 0.75
         result = ask_training(db, user_id=1, raw_question="help me get faster")
 
+    swimmer = SwimmerContext(profile=fake_profile, goals=[fake_goal])
     mock_goals.assert_called_once_with(db, 1)
-    mock_sharpen.assert_called_once_with("cleaned question", profile=fake_profile, goals=["goal"])
+    mock_sharpen.assert_called_once_with("cleaned question", swimmer=swimmer)
     assert mock_embed.call_args_list[1].args == ("sharpened question",)
     assert mock_search.call_count == 2
-    mock_answer.assert_called_once_with("sharpened question", [rescued_chunk], profile=fake_profile, goals=["goal"])
+    mock_answer.assert_called_once_with("sharpened question", [rescued_chunk], swimmer=swimmer)
     assert result.answer == "Sharpened answer."
     assert result.answered_from_knowledge_base is True
     assert result.sources == ["https://example.com"]
@@ -155,7 +159,7 @@ def test_ask_training_sharpen_rescue_still_misses_falls_back_to_web():
         result = ask_training(db, user_id=1, raw_question="still vague")
 
     mock_answer.assert_not_called()
-    mock_fallback.assert_called_once_with("sharpened question", profile=None, goals=[])
+    mock_fallback.assert_called_once_with("sharpened question", swimmer=SwimmerContext(profile=None, goals=[]))
     mock_ingest.assert_called_once_with(db, source_query="sharpened question", pages=[])
     assert result.answered_from_knowledge_base is False
     assert result.sources == []

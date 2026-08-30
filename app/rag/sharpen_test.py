@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from app.goal.model import Goal
 from app.profile.model import Profile
 from app.rag.sharpen import sharpen_question
+from app.rag.swimmer_context import SwimmerContext
 
 
 def _profile(**overrides: object) -> Profile:
@@ -29,7 +30,7 @@ def test_sharpen_question_returns_rewritten_text_and_includes_swimmer_context():
     fake_response = MagicMock(content=[fake_text_block])
 
     with patch("app.rag.sharpen.anthropic_client.messages.create", return_value=fake_response) as mock_create:
-        result = sharpen_question("help me get faster", profile=_profile(), goals=[_goal()])
+        result = sharpen_question("help me get faster", swimmer=SwimmerContext(profile=_profile(), goals=[_goal()]))
 
     assert result == "How can I improve my 100m freestyle sprint speed?"
     call_kwargs = mock_create.call_args.kwargs
@@ -43,7 +44,7 @@ def test_sharpen_question_handles_no_profile_or_goals():
     fake_response = MagicMock(content=[fake_text_block])
 
     with patch("app.rag.sharpen.anthropic_client.messages.create", return_value=fake_response) as mock_create:
-        sharpen_question("vague question", profile=None, goals=[])
+        sharpen_question("vague question", swimmer=SwimmerContext(profile=None, goals=[]))
 
     call_kwargs = mock_create.call_args.kwargs
     assert "no profile or goals on file" in call_kwargs["system"]

@@ -4,13 +4,9 @@ goals, so the re-embedded retry has a better shot at clearing the similarity
 threshold (see the "Hybrid RAG training-coach endpoint" Trello card).
 """
 
-from collections.abc import Sequence
-
 from app.config import settings
-from app.goal.model import Goal
-from app.profile.model import Profile
 from app.rag.clients import anthropic_client, extract_response_text
-from app.rag.swimmer_context import build_swimmer_context
+from app.rag.swimmer_context import SwimmerContext, build_swimmer_context
 
 MAX_SHARPEN_TOKENS = 256
 
@@ -24,8 +20,8 @@ Swimmer context:
 {context}"""
 
 
-def sharpen_question(question: str, *, profile: Profile | None, goals: Sequence[Goal]) -> str:
-    system = _SYSTEM_PROMPT.format(context=build_swimmer_context(profile, goals))
+def sharpen_question(question: str, *, swimmer: SwimmerContext) -> str:
+    system = _SYSTEM_PROMPT.format(context=build_swimmer_context(swimmer))
     response = anthropic_client.messages.create(
         model=settings.sharpen_model,
         max_tokens=MAX_SHARPEN_TOKENS,
