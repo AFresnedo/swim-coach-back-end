@@ -6,6 +6,7 @@ endpoint" Trello card).
 """
 
 import base64
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,9 +21,12 @@ from anthropic.types import (
 
 from app.config import settings
 from app.enums import STROKES
+from app.goal.model import Goal
+from app.profile.model import Profile
 from app.rag.clients import anthropic_client
 from app.rag.models import ALLOWED_WEB_DOMAINS, QUALITY_FLAGS, SKILL_LEVELS, TOPIC_CATEGORIES
 from app.rag.pdf_extract import extract_pdf_text
+from app.rag.swimmer_context import build_swimmer_context
 
 # Matches the value the confirming spike (see the card's step 4) ran
 # successfully with - a starting value, not a tuned one.
@@ -42,16 +46,20 @@ _SUBMIT_CANDIDATES_TOOL_NAME = "submit_ingestion_candidates"
 # and the fetch is required so there's always at least one full-page
 # candidate for the knowledge base, not because every claim in the answer
 # must be fetch-grounded - the model is free to cite other search results too.
-_SYSTEM_PROMPT = """You are a swim coach assistant answering a training question using \
-live web search, restricted to a vetted set of swim-coaching sources. Search first, then \
-use web_fetch on at least one of the most relevant pages you found, regardless of whether \
-the search results alone would already answer the question - its full content is needed \
-as a knowledge-base candidate. When reading a fetched page, base your answer only on the \
-article's own writing - disregard reader comments or other user-submitted replies that may \
-appear on the page. Answer the swimmer's question using whichever combination of the \
-search results and fetched content best supports it, and cite your sources. After \
-answering, call submit_ingestion_candidates once, listing every page you fetched that's \
-worth keeping in a knowledge base for future questions."""
+_SYSTEM_PROMPT_TEMPLATE = """You are a swim coach assistant answering a training question \
+using live web search, restricted to a vetted set of swim-coaching sources. Search first, \
+then use web_fetch on at least one of the most relevant pages you found, regardless of \
+whether the search results alone would already answer the question - its full content is \
+needed as a knowledge-base candidate. When reading a fetched page, base your answer only \
+on the article's own writing - disregard reader comments or other user-submitted replies \
+that may appear on the page. Answer the swimmer's question using whichever combination of \
+the search results and fetched content best supports it, personalized using the swimmer \
+context below, and cite your sources. After answering, call submit_ingestion_candidates \
+once, listing every page you fetched that's worth keeping in a knowledge base for future \
+questions.
+
+Swimmer context:
+{swimmer_context}"""
 
 
 def _nullable_enum(values: tuple[str, ...]) -> dict[str, Any]:
@@ -291,7 +299,9 @@ def _extract_fetched_pages(content: list[Any]) -> list[FetchedPage]:
     return pages
 
 
-def _continue_after_tool_use(response: Any, messages: list[MessageParam], tools: list[ToolUnionParam]) -> Any:
+def _continue_after_tool_use(
+    response: Any, messages: list[MessageParam], tools: list[ToolUnionParam], system: str
+) -> Any:
     """Confirmed necessary by scripts/spike_citations_ingestion_direct.py: the
     model doesn't reliably write its swimmer-facing answer before calling
     submit_ingestion_candidates, even though the system prompt asks for that
@@ -310,24 +320,25 @@ def _continue_after_tool_use(response: Any, messages: list[MessageParam], tools:
     with anthropic_client.messages.stream(
         model=settings.coach_model,
         max_tokens=MAX_FALLBACK_TOKENS,
-        system=_SYSTEM_PROMPT,
+        system=system,
         tools=tools,
         messages=messages,
     ) as stream:
         return stream.get_final_message()
 
 
-def answer_with_web_fallback(question: str) -> WebFallbackResult:
+def answer_with_web_fallback(question: str, *, profile: Profile | None, goals: Sequence[Goal]) -> WebFallbackResult:
     """Card step 4: search + fetch from ALLOWED_WEB_DOMAINS and answer
     grounded in what was found. The caller only takes this path once
     retrieval (and the optional Step 3b rescue) both miss."""
+    system = _SYSTEM_PROMPT_TEMPLATE.format(swimmer_context=build_swimmer_context(profile, goals))
     messages: list[MessageParam] = [{"role": "user", "content": question}]
     tools = _tools()
 
     with anthropic_client.messages.stream(
         model=settings.coach_model,
         max_tokens=MAX_FALLBACK_TOKENS,
-        system=_SYSTEM_PROMPT,
+        system=system,
         tools=tools,
         messages=messages,
     ) as stream:
@@ -335,7 +346,7 @@ def answer_with_web_fallback(question: str) -> WebFallbackResult:
 
     full_content = list(response.content)
     if response.stop_reason == "tool_use":
-        continuation = _continue_after_tool_use(response, messages, tools)
+        continuation = _continue_after_tool_use(response, messages, tools, system)
         full_content += continuation.content
 
     answer, sources = _extract_answer_and_sources(full_content)

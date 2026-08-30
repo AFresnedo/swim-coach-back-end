@@ -46,12 +46,14 @@ def test_ask_training_answers_from_knowledge_base_on_hit():
 
 def test_ask_training_skips_sharpen_and_falls_back_to_web_when_sharpen_disabled():
     db = MagicMock()
+    _mock_profile_lookup(db, None)
     first_pass_chunk = _chunk(0.5)
 
     with (
         patch("app.rag.training.clean_question", return_value="cleaned question"),
         patch("app.rag.training.embed_query", return_value=[0.1]) as mock_embed,
         patch("app.rag.training.search_swim_knowledge", return_value=[first_pass_chunk]) as mock_search,
+        patch("app.rag.training.fetch_active_goals", return_value=[]),
         patch("app.rag.training.answer_from_knowledge") as mock_answer,
         patch("app.rag.training.sharpen_question") as mock_sharpen,
         patch("app.rag.training.is_sharpen_enabled", return_value=False),
@@ -69,7 +71,7 @@ def test_ask_training_skips_sharpen_and_falls_back_to_web_when_sharpen_disabled(
     mock_answer.assert_not_called()
     mock_embed.assert_called_once()
     mock_search.assert_called_once()
-    mock_fallback.assert_called_once_with("cleaned question")
+    mock_fallback.assert_called_once_with("cleaned question", profile=None, goals=[])
     mock_ingest.assert_called_once_with(db, source_query="cleaned question", pages=[])
     assert result.answer == "General web-fallback answer."
     assert result.answered_from_knowledge_base is False
@@ -78,10 +80,12 @@ def test_ask_training_skips_sharpen_and_falls_back_to_web_when_sharpen_disabled(
 
 def test_ask_training_falls_back_to_web_when_kb_empty():
     db = MagicMock()
+    _mock_profile_lookup(db, None)
     with (
         patch("app.rag.training.clean_question", return_value="cleaned question"),
         patch("app.rag.training.embed_query", return_value=[0.1]),
         patch("app.rag.training.search_swim_knowledge", return_value=[]),
+        patch("app.rag.training.fetch_active_goals", return_value=[]),
         patch("app.rag.training.answer_from_knowledge") as mock_answer,
         patch("app.rag.training.is_sharpen_enabled", return_value=False),
         patch("app.rag.training.answer_with_web_fallback", return_value=_fallback_result()) as mock_fallback,
@@ -90,7 +94,7 @@ def test_ask_training_falls_back_to_web_when_kb_empty():
         result = ask_training(db, user_id=1, raw_question="anything")
 
     mock_answer.assert_not_called()
-    mock_fallback.assert_called_once_with("cleaned question")
+    mock_fallback.assert_called_once_with("cleaned question", profile=None, goals=[])
     mock_ingest.assert_called_once_with(db, source_query="cleaned question", pages=[])
     assert result.answer == "General web-fallback answer."
     assert result.answered_from_knowledge_base is False
@@ -123,7 +127,7 @@ def test_ask_training_sharpen_rescue_flips_miss_to_hit_when_enabled():
     mock_sharpen.assert_called_once_with("cleaned question", profile=fake_profile, goals=["goal"])
     assert mock_embed.call_args_list[1].args == ("sharpened question",)
     assert mock_search.call_count == 2
-    mock_answer.assert_called_once_with("sharpened question", [rescued_chunk])
+    mock_answer.assert_called_once_with("sharpened question", [rescued_chunk], profile=fake_profile, goals=["goal"])
     assert result.answer == "Sharpened answer."
     assert result.answered_from_knowledge_base is True
     assert result.sources == ["https://example.com"]
@@ -151,7 +155,7 @@ def test_ask_training_sharpen_rescue_still_misses_falls_back_to_web():
         result = ask_training(db, user_id=1, raw_question="still vague")
 
     mock_answer.assert_not_called()
-    mock_fallback.assert_called_once_with("sharpened question")
+    mock_fallback.assert_called_once_with("sharpened question", profile=None, goals=[])
     mock_ingest.assert_called_once_with(db, source_query="sharpened question", pages=[])
     assert result.answered_from_knowledge_base is False
     assert result.sources == []

@@ -2,6 +2,8 @@ import base64
 from unittest.mock import MagicMock, patch
 
 from app.config import settings
+from app.goal.model import Goal
+from app.profile.model import Profile
 from app.rag.models import ALLOWED_WEB_DOMAINS
 from app.rag.web_fallback import CitedSource, answer_with_web_fallback
 
@@ -114,10 +116,8 @@ def test_answer_with_web_fallback_reconstructs_answer_and_sources():
         stop_reason="end_turn",
     )
 
-    with patch(
-        "app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)
-    ):
-        result = answer_with_web_fallback("how do I improve my catch?")
+    with patch("app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)):
+        result = answer_with_web_fallback("how do I improve my catch?", profile=None, goals=[])
 
     assert result.answer == "Try a high-elbow catch. Keep the elbow up."
     assert result.sources == [CitedSource(url="https://swimswam.com/catch", fetched=True)]
@@ -133,10 +133,8 @@ def test_answer_with_web_fallback_pairs_candidates_with_fetched_text():
     )
     turn2 = MagicMock(content=[_text_block("Answer.")], stop_reason="end_turn")
 
-    with patch(
-        "app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)
-    ):
-        result = answer_with_web_fallback("how do I improve my catch?")
+    with patch("app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)):
+        result = answer_with_web_fallback("how do I improve my catch?", profile=None, goals=[])
 
     assert len(result.fetched_pages) == 1
     page = result.fetched_pages[0]
@@ -164,7 +162,7 @@ def test_answer_with_web_fallback_continues_past_tool_use_with_no_answer_yet():
     with patch(
         "app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)
     ) as mock_stream:
-        result = answer_with_web_fallback("how do I improve my catch?")
+        result = answer_with_web_fallback("how do I improve my catch?", profile=None, goals=[])
 
     assert result.answer == "Try a high-elbow catch."
     assert mock_stream.call_count == 2
@@ -189,7 +187,7 @@ def test_answer_with_web_fallback_skips_continuation_when_turn_ends_without_tool
     with patch(
         "app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)
     ) as mock_stream:
-        result = answer_with_web_fallback("question")
+        result = answer_with_web_fallback("question", profile=None, goals=[])
 
     assert result.answer == "Answer with no fetch backing it."
     assert mock_stream.call_count == 1
@@ -208,7 +206,7 @@ def test_answer_with_web_fallback_resolves_char_citation_after_a_pdf_fetch():
     response = MagicMock(content=content, stop_reason="end_turn")
 
     with patch("app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)):
-        result = answer_with_web_fallback("how do I improve my catch?")
+        result = answer_with_web_fallback("how do I improve my catch?", profile=None, goals=[])
 
     assert result.sources == [CitedSource(url="https://swimswam.com/catch", fetched=True)]
 
@@ -221,7 +219,7 @@ def test_answer_with_web_fallback_collects_search_snippet_citations_too():
     response = MagicMock(content=content, stop_reason="end_turn")
 
     with patch("app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)):
-        result = answer_with_web_fallback("question")
+        result = answer_with_web_fallback("question", profile=None, goals=[])
 
     assert result.sources == [CitedSource(url="https://swimmingworldmagazine.com/tip", fetched=False)]
 
@@ -230,14 +228,12 @@ def test_answer_with_web_fallback_keeps_fetched_true_when_same_url_also_cited_as
     content = [
         _fetch_block("https://swimswam.com/catch", "Full page text about the catch."),
         _text_block("Try a high-elbow catch.", citations=[_char_citation(0)]),
-        _text_block(
-            " Also covered elsewhere.", citations=[_search_result_citation("https://swimswam.com/catch")]
-        ),
+        _text_block(" Also covered elsewhere.", citations=[_search_result_citation("https://swimswam.com/catch")]),
     ]
     response = MagicMock(content=content, stop_reason="end_turn")
 
     with patch("app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)):
-        result = answer_with_web_fallback("question")
+        result = answer_with_web_fallback("question", profile=None, goals=[])
 
     assert result.sources == [CitedSource(url="https://swimswam.com/catch", fetched=True)]
 
@@ -253,7 +249,7 @@ def test_answer_with_web_fallback_reports_mixed_fetched_and_snippet_sources():
     response = MagicMock(content=content, stop_reason="end_turn")
 
     with patch("app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)):
-        result = answer_with_web_fallback("question")
+        result = answer_with_web_fallback("question", profile=None, goals=[])
 
     assert result.sources == [
         CitedSource(url="https://swimswam.com/catch", fetched=True),
@@ -266,10 +262,8 @@ def test_answer_with_web_fallback_drops_candidate_with_no_matching_fetch():
     turn1 = MagicMock(content=[_submit_candidates_block([hallucinated_candidate])], stop_reason="tool_use")
     turn2 = MagicMock(content=[_text_block("Answer with no fetch backing it.")], stop_reason="end_turn")
 
-    with patch(
-        "app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)
-    ):
-        result = answer_with_web_fallback("question")
+    with patch("app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)):
+        result = answer_with_web_fallback("question", profile=None, goals=[])
 
     assert result.fetched_pages == []
 
@@ -289,10 +283,8 @@ def test_answer_with_web_fallback_skips_pdf_fetch_when_extraction_disabled():
     )
     turn2 = MagicMock(content=[_text_block("Answer.")], stop_reason="end_turn")
 
-    with patch(
-        "app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)
-    ):
-        result = answer_with_web_fallback("question")
+    with patch("app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)):
+        result = answer_with_web_fallback("question", profile=None, goals=[])
 
     assert result.fetched_pages == []
     assert result.sources == []
@@ -310,10 +302,8 @@ def test_answer_with_web_fallback_extracts_pdf_text_when_extraction_enabled(monk
     )
     turn2 = MagicMock(content=[_text_block("Answer.")], stop_reason="end_turn")
 
-    with patch(
-        "app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)
-    ):
-        result = answer_with_web_fallback("question")
+    with patch("app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)):
+        result = answer_with_web_fallback("question", profile=None, goals=[])
 
     assert len(result.fetched_pages) == 1
     page = result.fetched_pages[0]
@@ -333,10 +323,8 @@ def test_answer_with_web_fallback_drops_pdf_candidate_when_extraction_fails(monk
     )
     turn2 = MagicMock(content=[_text_block("Answer.")], stop_reason="end_turn")
 
-    with patch(
-        "app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)
-    ):
-        result = answer_with_web_fallback("question")
+    with patch("app.rag.web_fallback.anthropic_client.messages.stream", side_effect=_stream_sequence(turn1, turn2)):
+        result = answer_with_web_fallback("question", profile=None, goals=[])
 
     assert result.fetched_pages == []
 
@@ -347,7 +335,7 @@ def test_answer_with_web_fallback_builds_tool_definitions_with_domain_and_caller
     with patch(
         "app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)
     ) as mock_stream:
-        answer_with_web_fallback("question")
+        answer_with_web_fallback("question", profile=None, goals=[])
 
     tools = mock_stream.call_args.kwargs["tools"]
     web_search_tool = next(tool for tool in tools if tool["name"] == "web_search")
@@ -366,6 +354,21 @@ def test_answer_with_web_fallback_system_prompt_tells_model_to_disregard_comment
     with patch(
         "app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)
     ) as mock_stream:
-        answer_with_web_fallback("question")
+        answer_with_web_fallback("question", profile=None, goals=[])
 
     assert "disregard reader comments" in mock_stream.call_args.kwargs["system"]
+
+
+def test_answer_with_web_fallback_includes_swimmer_context():
+    response = MagicMock(content=[_text_block("Answer.")])
+    profile = Profile(user_id=1, age=15, height_cm=170.0, weight_kg=60.0, sex="female", unit_preference="metric")
+    goals = [Goal(user_id=1, text="sub-60 100 free", is_active=True)]
+
+    with patch(
+        "app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)
+    ) as mock_stream:
+        answer_with_web_fallback("question", profile=profile, goals=goals)
+
+    system = mock_stream.call_args.kwargs["system"]
+    assert "15yo female" in system
+    assert "sub-60 100 free" in system

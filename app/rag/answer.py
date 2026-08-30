@@ -3,14 +3,23 @@ question from retrieved SwimKnowledge context, in a single Claude call with
 no tools (see the "Hybrid RAG training-coach endpoint" Trello card).
 """
 
+from collections.abc import Sequence
+
 from app.config import settings
+from app.goal.model import Goal
+from app.profile.model import Profile
 from app.rag.clients import anthropic_client, extract_response_text
 from app.rag.retrieval import RetrievedChunk
+from app.rag.swimmer_context import build_swimmer_context
 
 _SYSTEM_PROMPT_TEMPLATE = """You are a swim coach assistant. Answer the swimmer's \
 question using only the knowledge base excerpts provided below - do not draw on \
 general knowledge. If the excerpts don't fully answer the question, say so \
-explicitly rather than filling the gap yourself.
+explicitly rather than filling the gap yourself. Personalize the answer using the \
+swimmer context below.
+
+Swimmer context:
+{swimmer_context}
 
 Knowledge base excerpts:
 {context}"""
@@ -24,11 +33,15 @@ def _build_context(chunks: list[RetrievedChunk]) -> str:
     return "\n\n".join(f"Source: {result.chunk.source_url}\n{result.chunk.chunk_text}" for result in chunks)
 
 
-def answer_from_knowledge(question: str, chunks: list[RetrievedChunk]) -> str:
+def answer_from_knowledge(
+    question: str, chunks: list[RetrievedChunk], *, profile: Profile | None, goals: Sequence[Goal]
+) -> str:
     """Answer `question` grounded in `chunks` (the KB hit path - card step 3).
     `chunks` must be non-empty; the caller only takes this path once
     retrieval clears SIMILARITY_THRESHOLD."""
-    system = _SYSTEM_PROMPT_TEMPLATE.format(context=_build_context(chunks))
+    system = _SYSTEM_PROMPT_TEMPLATE.format(
+        swimmer_context=build_swimmer_context(profile, goals), context=_build_context(chunks)
+    )
     response = anthropic_client.messages.create(
         model=settings.coach_model,
         max_tokens=MAX_ANSWER_TOKENS,
