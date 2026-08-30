@@ -101,6 +101,7 @@ def test_ask_endpoint_falls_back_to_web_search_on_empty_kb(pg_client, pg_session
             "app.rag.web_fallback.anthropic_client.messages.stream",
             side_effect=[_fake_stream(turn1_response), _fake_stream(turn2_response)],
         ),
+        patch("app.rag.ingest.clean_fetched_text", side_effect=lambda text: text),
         patch("app.rag.ingest.embed_documents") as mock_embed_documents,
     ):
         mock_embed_documents.side_effect = lambda texts: [[0.0] * EMBEDDING_DIMENSION for _ in texts]

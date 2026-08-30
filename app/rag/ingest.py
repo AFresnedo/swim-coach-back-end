@@ -13,6 +13,7 @@ leaves its schedule TBD), so it isn't part of this module either.
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.orm import Session
 
+from app.rag.clean import clean_fetched_text
 from app.rag.embeddings import embed_documents
 from app.rag.models import SwimKnowledge
 from app.rag.web_fallback import FetchedPage
@@ -51,7 +52,9 @@ def ingest_fetched_pages(db: Session, *, source_query: str, pages: list[FetchedP
     module's docstring): a page is skipped if its quality_flag isn't "pass"
     (the LLM-assessed signal, layered on top of the deterministic guardrails
     rather than replacing them) or if its source_url is already present in
-    SwimKnowledge (dedup).
+    SwimKnowledge (dedup). Each accepted page's raw_text is also run through
+    clean_fetched_text before chunking, not a checklist guardrail but a
+    content-quality step (see app/rag/clean.py).
     """
     accepted = [
         page
@@ -64,7 +67,8 @@ def ingest_fetched_pages(db: Session, *, source_query: str, pages: list[FetchedP
     chunk_texts: list[str] = []
     chunk_owners: list[FetchedPage] = []
     for page in accepted:
-        for chunk_text in _splitter.split_text(page.raw_text):
+        cleaned_text = clean_fetched_text(page.raw_text)
+        for chunk_text in _splitter.split_text(cleaned_text):
             chunk_texts.append(chunk_text)
             chunk_owners.append(page)
 

@@ -25,7 +25,10 @@ def _fake_embed(texts: list[str]) -> list[list[float]]:
 
 
 def test_ingest_fetched_pages_writes_chunk_with_full_provenance(pg_session):
-    with patch("app.rag.ingest.embed_documents", side_effect=_fake_embed):
+    with (
+        patch("app.rag.ingest.clean_fetched_text", side_effect=lambda text: text),
+        patch("app.rag.ingest.embed_documents", side_effect=_fake_embed),
+    ):
         rows = ingest_fetched_pages(pg_session, source_query="how do I improve my catch?", pages=[_page()])
 
     assert len(rows) == 1
@@ -67,7 +70,10 @@ def test_ingest_fetched_pages_skips_source_url_already_in_knowledge_base(pg_sess
 
 
 def test_ingest_fetched_pages_dedups_duplicate_source_url_within_one_call(pg_session):
-    with patch("app.rag.ingest.embed_documents", side_effect=_fake_embed):
+    with (
+        patch("app.rag.ingest.clean_fetched_text", side_effect=lambda text: text),
+        patch("app.rag.ingest.embed_documents", side_effect=_fake_embed),
+    ):
         rows = ingest_fetched_pages(pg_session, source_query="q", pages=[_page(), _page()])
 
     assert len(rows) == 1
@@ -76,8 +82,25 @@ def test_ingest_fetched_pages_dedups_duplicate_source_url_within_one_call(pg_ses
 
 def test_ingest_fetched_pages_splits_long_text_into_multiple_chunks(pg_session):
     long_text = "A high-elbow catch generates more propulsive power. " * 100
-    with patch("app.rag.ingest.embed_documents", side_effect=_fake_embed):
+    with (
+        patch("app.rag.ingest.clean_fetched_text", side_effect=lambda text: text),
+        patch("app.rag.ingest.embed_documents", side_effect=_fake_embed),
+    ):
         rows = ingest_fetched_pages(pg_session, source_query="q", pages=[_page(raw_text=long_text)])
 
     assert len(rows) > 1
     assert all(row.source_url == "https://swimswam.com/catch" for row in rows)
+
+
+def test_ingest_fetched_pages_chunks_cleaned_text_not_raw_text(pg_session):
+    with (
+        patch("app.rag.ingest.clean_fetched_text", return_value="Cleaned article body.") as mock_clean,
+        patch("app.rag.ingest.embed_documents", side_effect=_fake_embed),
+    ):
+        rows = ingest_fetched_pages(
+            pg_session, source_query="q", pages=[_page(raw_text="nav links\n\nreal content\n\nfooter links")]
+        )
+
+    mock_clean.assert_called_once_with("nav links\n\nreal content\n\nfooter links")
+    assert len(rows) == 1
+    assert rows[0].chunk_text == "Cleaned article body."

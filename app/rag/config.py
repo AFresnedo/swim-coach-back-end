@@ -40,6 +40,14 @@ class RagSettings(BaseSettings):
     # instead of a hardcoded model id.
     sharpen_model: Literal["claude-haiku-4-5"] = "claude-haiku-4-5"
 
+    # Card step 4 ingestion: strips nav/ads/comment noise from a fetched
+    # page's raw text before it's chunked (see app/rag/clean.py). A separate
+    # knob from coach_model and sharpen_model for the same reason
+    # sharpen_model is its own setting - this only pays for itself
+    # economically if it stays on whichever model is cheapest, independent of
+    # what the other steps are configured to use.
+    clean_model: Literal["claude-haiku-4-5"] = "claude-haiku-4-5"
+
     # Off by default: web_fetch returns a fetched PDF as a base64 document
     # rather than text (Anthropic's web fetch tool docs - PDFs are passed
     # through like a directly-attached document, never converted to text
