@@ -358,3 +358,14 @@ def test_answer_with_web_fallback_builds_tool_definitions_with_domain_and_caller
     assert web_fetch_tool["allowed_domains"] == list(ALLOWED_WEB_DOMAINS)
     assert web_fetch_tool["allowed_callers"] == ["direct"]
     assert web_fetch_tool["citations"] == {"enabled": True}
+
+
+def test_answer_with_web_fallback_system_prompt_tells_model_to_disregard_comments():
+    response = MagicMock(content=[_text_block("Answer.")])
+
+    with patch(
+        "app.rag.web_fallback.anthropic_client.messages.stream", return_value=_stream_returning(response)
+    ) as mock_stream:
+        answer_with_web_fallback("question")
+
+    assert "disregard reader comments" in mock_stream.call_args.kwargs["system"]
