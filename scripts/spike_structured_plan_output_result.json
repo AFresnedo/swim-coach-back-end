@@ -1,0 +1,380 @@
+{
+  "summary": "3-week, 4-session/week freestyle-focused plan for a 16-year-old intermediate swimmer targeting a sub-1:00 100m freestyle. The plan progresses from aerobic base and technique consolidation (Week 1), through race-pace and lactate tolerance work (Week 2), to a sharpening/taper-style week emphasizing speed and starts/turns (Week 3). Each session includes a warm-up, technique/drill work, main aerobic or race-pace set, and a cool-down, with rest intervals calibrated to build toward race-pace endurance and speed.",
+  "weeks": [
+    {
+      "week_number": 1,
+      "sessions": [
+        {
+          "focus": "Aerobic Base + Technique (Freestyle)",
+          "sets": [
+            {
+              "description": "Warm-up: easy freestyle swim, focus on long stroke",
+              "distance_meters": 400,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Drill set: catch-up drill freestyle",
+              "distance_meters": 50,
+              "reps": 8,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Main aerobic set: freestyle at moderate pace",
+              "distance_meters": 100,
+              "reps": 8,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Cool-down: easy mixed strokes",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        },
+        {
+          "focus": "Technique & Stroke Efficiency",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle with bilateral breathing",
+              "distance_meters": 300,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Drill set: fingertip drag drill",
+              "distance_meters": 50,
+              "reps": 6,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Drill set: single-arm freestyle drill",
+              "distance_meters": 50,
+              "reps": 6,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Technique swim: freestyle focusing on high elbow catch",
+              "distance_meters": 100,
+              "reps": 6,
+              "rest_seconds": 25
+            },
+            {
+              "description": "Cool-down: easy backstroke/freestyle mix",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        },
+        {
+          "focus": "Aerobic Endurance",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle easy pace",
+              "distance_meters": 400,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Kick set: freestyle kick with board",
+              "distance_meters": 100,
+              "reps": 4,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Main aerobic set: freestyle steady pace",
+              "distance_meters": 200,
+              "reps": 5,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Cool-down: easy swim",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        },
+        {
+          "focus": "Speed Introduction & Race Pace Awareness",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle easy with build",
+              "distance_meters": 400,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Starts practice: dive + 15m freestyle sprint",
+              "distance_meters": 15,
+              "reps": 6,
+              "rest_seconds": 45
+            },
+            {
+              "description": "Race pace set: 50m freestyle at target 100m pace (roughly 28-29 sec per 50m)",
+              "distance_meters": 50,
+              "reps": 6,
+              "rest_seconds": 40
+            },
+            {
+              "description": "Cool-down: easy swim",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "week_number": 2,
+      "sessions": [
+        {
+          "focus": "Race Pace Development",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle easy with build",
+              "distance_meters": 400,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Drill set: high elbow catch-up drill",
+              "distance_meters": 50,
+              "reps": 6,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Race pace set: 100m freestyle at goal pace (~58-59 sec target)",
+              "distance_meters": 100,
+              "reps": 6,
+              "rest_seconds": 60
+            },
+            {
+              "description": "Cool-down: easy swim",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        },
+        {
+          "focus": "Lactate Tolerance",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle easy pace",
+              "distance_meters": 400,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Kick set: freestyle kick fast with fins",
+              "distance_meters": 50,
+              "reps": 6,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Lactate set: 75m freestyle fast",
+              "distance_meters": 75,
+              "reps": 8,
+              "rest_seconds": 45
+            },
+            {
+              "description": "Cool-down: easy swim",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        },
+        {
+          "focus": "Aerobic Maintenance + Technique Refinement",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle easy pace",
+              "distance_meters": 400,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Drill set: fist drill freestyle",
+              "distance_meters": 50,
+              "reps": 6,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Main aerobic set: freestyle steady with negative split every 3rd rep",
+              "distance_meters": 150,
+              "reps": 6,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Cool-down: easy mixed swim",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        },
+        {
+          "focus": "Speed & Turns",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle easy with build",
+              "distance_meters": 400,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Starts practice: dive + 15m freestyle sprint",
+              "distance_meters": 15,
+              "reps": 6,
+              "rest_seconds": 45
+            },
+            {
+              "description": "Turn practice: flip turn + 15m breakout freestyle",
+              "distance_meters": 25,
+              "reps": 8,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Sprint set: 50m freestyle max effort",
+              "distance_meters": 50,
+              "reps": 8,
+              "rest_seconds": 50
+            },
+            {
+              "description": "Cool-down: easy swim",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "week_number": 3,
+      "sessions": [
+        {
+          "focus": "Race Simulation & Pace Precision",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle easy with build",
+              "distance_meters": 400,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Drill set: high elbow catch-up drill",
+              "distance_meters": 50,
+              "reps": 4,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Race simulation: 100m freestyle at goal pace with dive start",
+              "distance_meters": 100,
+              "reps": 4,
+              "rest_seconds": 90
+            },
+            {
+              "description": "Cool-down: easy swim",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        },
+        {
+          "focus": "Speed Sharpening",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle easy pace",
+              "distance_meters": 300,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Starts practice: dive + 25m freestyle sprint",
+              "distance_meters": 25,
+              "reps": 6,
+              "rest_seconds": 45
+            },
+            {
+              "description": "Sprint set: 25m freestyle max effort",
+              "distance_meters": 25,
+              "reps": 10,
+              "rest_seconds": 40
+            },
+            {
+              "description": "Cool-down: easy swim",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        },
+        {
+          "focus": "Active Recovery + Technique Polish",
+          "sets": [
+            {
+              "description": "Warm-up: easy freestyle long stroke",
+              "distance_meters": 300,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Drill set: catch-up drill freestyle",
+              "distance_meters": 50,
+              "reps": 4,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Easy aerobic swim: freestyle relaxed pace",
+              "distance_meters": 100,
+              "reps": 4,
+              "rest_seconds": 20
+            },
+            {
+              "description": "Cool-down: easy mixed strokes",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        },
+        {
+          "focus": "Taper & Time Trial",
+          "sets": [
+            {
+              "description": "Warm-up: freestyle easy with build and starts",
+              "distance_meters": 300,
+              "reps": 1,
+              "rest_seconds": 30
+            },
+            {
+              "description": "Starts practice: dive + 15m freestyle sprint",
+              "distance_meters": 15,
+              "reps": 4,
+              "rest_seconds": 45
+            },
+            {
+              "description": "Time trial: 100m freestyle for time (goal: sub 1:00)",
+              "distance_meters": 100,
+              "reps": 1,
+              "rest_seconds": 0
+            },
+            {
+              "description": "Cool-down: easy relaxed swim",
+              "distance_meters": 200,
+              "reps": 1,
+              "rest_seconds": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
