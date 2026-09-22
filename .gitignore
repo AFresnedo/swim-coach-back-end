@@ -21,3 +21,6 @@ requirements.txt
 
 # Claude Code harness runtime state
 .claude/
+
+# macOS Finder metadata
+.DS_Store

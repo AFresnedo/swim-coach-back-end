@@ -9,12 +9,13 @@ from app.config import settings
 from app.profile.model import Profile
 from app.rag.answer import answer_from_knowledge
 from app.rag.embeddings import embed_query
+from app.rag.ingest import ingest_fetched_pages
 from app.rag.query import clean_question
 from app.rag.retrieval import RetrievedChunk, fetch_active_goals, search_swim_knowledge
 from app.rag.sharpen import sharpen_question
 from app.rag.sharpen_flag import is_sharpen_enabled
-
-_NO_MATCH_ANSWER = "I don't have enough information in the knowledge base to answer this confidently."
+from app.rag.swimmer_context import SwimmerContext
+from app.rag.web_fallback import answer_with_web_fallback
 
 
 @dataclass(frozen=True)
@@ -30,19 +31,24 @@ def _is_hit(results: list[RetrievedChunk]) -> bool:
 
 def ask_training(db: Session, *, user_id: int, raw_question: str) -> TrainingAnswer:
     question = clean_question(raw_question)
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    goals = fetch_active_goals(db, user_id)
+    swimmer = SwimmerContext(profile=profile, goals=goals)
     query_vector = embed_query(question)
     results = search_swim_knowledge(db, query_vector)
 
     if not _is_hit(results) and is_sharpen_enabled():
-        profile = db.query(Profile).filter(Profile.user_id == user_id).first()
-        goals = fetch_active_goals(db, user_id)
-        question = sharpen_question(question, profile=profile, goals=goals)
+        question = sharpen_question(question, swimmer=swimmer)
         query_vector = embed_query(question)
         results = search_swim_knowledge(db, query_vector)
 
     if _is_hit(results):
-        answer = answer_from_knowledge(question, results)
+        answer = answer_from_knowledge(question, results, swimmer=swimmer)
         sources = [result.chunk.source_url for result in results]
         return TrainingAnswer(answer=answer, answered_from_knowledge_base=True, sources=sources)
 
-    return TrainingAnswer(answer=_NO_MATCH_ANSWER, answered_from_knowledge_base=False, sources=[])
+    fallback = answer_with_web_fallback(question, swimmer=swimmer)
+    ingest_fetched_pages(db, source_query=question, pages=fallback.fetched_pages)
+    # Flattens to plain URLs on purpose - anything else on CitedSource is dropped, not lost (still on fallback.sources).
+    sources = [source.url for source in fallback.sources]
+    return TrainingAnswer(answer=fallback.answer, answered_from_knowledge_base=False, sources=sources)
