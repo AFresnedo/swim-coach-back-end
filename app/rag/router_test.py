@@ -47,10 +47,64 @@ def test_ask_endpoint_answers_from_knowledge_base_on_hit(pg_client, pg_session, 
     assert body["sources"] == ["https://example.com/breathing"]
 
 
-def test_ask_endpoint_returns_no_match_answer_on_empty_kb(pg_client, pg_auth_headers):
+def test_ask_endpoint_falls_back_to_web_search_on_empty_kb(pg_client, pg_session, pg_auth_headers):
     query_vector = [0.0] * EMBEDDING_DIMENSION
 
-    with patch("app.rag.training.embed_query", return_value=query_vector):
+    fetch_block = MagicMock(
+        type="web_fetch_tool_result",
+        content=MagicMock(
+            type="web_fetch_result",
+            url="https://swimswam.com/catch",
+            content=MagicMock(source=MagicMock(type="text", data="Full page text about the catch.")),
+        ),
+    )
+    answer_block = MagicMock(
+        type="text",
+        text="Try a high-elbow catch.",
+        citations=[MagicMock(type="char_location", document_index=0)],
+    )
+    candidate_block = MagicMock(
+        type="tool_use",
+        input={
+            "candidates": [
+                {
+                    "source_url": "https://swimswam.com/catch",
+                    "quality_score": 0.8,
+                    "quality_flag": "pass",
+                    "quality_reason": "Clear coaching advice.",
+                    "stroke_type": "freestyle",
+                    "topic_category": "technique",
+                    "skill_level": "intermediate",
+                }
+            ]
+        },
+    )
+    candidate_block.name = "submit_ingestion_candidates"
+
+    # Two turns, matching real API behavior confirmed by
+    # scripts/spike_citations_ingestion_direct.py: a message containing a
+    # client tool_use (submit_ingestion_candidates) always stops with
+    # stop_reason "tool_use", whether or not the model already wrote its
+    # answer - the citation-bearing answer text only arrives once a
+    # tool_result is sent back and the turn is continued.
+    turn1_response = MagicMock(content=[fetch_block, candidate_block], stop_reason="tool_use")
+    turn2_response = MagicMock(content=[answer_block], stop_reason="end_turn")
+
+    def _fake_stream(response: MagicMock) -> MagicMock:
+        stream = MagicMock()
+        stream.__enter__.return_value.get_final_message.return_value = response
+        return stream
+
+    with (
+        patch("app.rag.training.embed_query", return_value=query_vector),
+        patch(
+            "app.rag.web_fallback.anthropic_client.messages.stream",
+            side_effect=[_fake_stream(turn1_response), _fake_stream(turn2_response)],
+        ),
+        patch("app.rag.ingest.clean_fetched_text", side_effect=lambda text: text),
+        patch("app.rag.ingest.embed_documents") as mock_embed_documents,
+    ):
+        mock_embed_documents.side_effect = lambda texts: [[0.0] * EMBEDDING_DIMENSION for _ in texts]
         response = pg_client.post(
             "/training/ask",
             json={"question": "how do i breathe better?"},
@@ -59,8 +113,13 @@ def test_ask_endpoint_returns_no_match_answer_on_empty_kb(pg_client, pg_auth_hea
 
     assert response.status_code == 200
     body = response.json()
+    assert body["answer"] == "Try a high-elbow catch."
     assert body["answered_from_knowledge_base"] is False
-    assert body["sources"] == []
+    assert body["sources"] == ["https://swimswam.com/catch"]
+
+    ingested = pg_session.query(SwimKnowledge).filter(SwimKnowledge.source_url == "https://swimswam.com/catch").all()
+    assert len(ingested) == 1
+    assert ingested[0].quality_flag == "pass"
 
 
 def test_ask_endpoint_rejects_empty_question(pg_client, pg_auth_headers):

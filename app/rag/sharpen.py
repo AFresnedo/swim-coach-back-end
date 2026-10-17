@@ -4,12 +4,9 @@ goals, so the re-embedded retry has a better shot at clearing the similarity
 threshold (see the "Hybrid RAG training-coach endpoint" Trello card).
 """
 
-from collections.abc import Sequence
-
 from app.config import settings
-from app.goal.model import Goal
-from app.profile.model import Profile
 from app.rag.clients import anthropic_client, extract_response_text
+from app.rag.swimmer_context import SwimmerContext, build_swimmer_context
 
 MAX_SHARPEN_TOKENS = 256
 
@@ -23,31 +20,8 @@ Swimmer context:
 {context}"""
 
 
-def _demographics(profile: Profile | None) -> str:
-    if profile is None:
-        return ""
-    if profile.sex == "prefer_not_to_say":
-        return f"{profile.age}yo"
-    return f"{profile.age}yo {profile.sex}"
-
-
-def _goals_summary(goals: Sequence[Goal]) -> str:
-    return ", ".join(goal.text for goal in goals)
-
-
-def _build_swimmer_context(profile: Profile | None, goals: Sequence[Goal]) -> str:
-    segments = []
-    demographics = _demographics(profile)
-    if demographics:
-        segments.append(demographics)
-    goals_summary = _goals_summary(goals)
-    if goals_summary:
-        segments.append(f"active goals: {goals_summary}")
-    return "; ".join(segments) if segments else "no profile or goals on file"
-
-
-def sharpen_question(question: str, *, profile: Profile | None, goals: Sequence[Goal]) -> str:
-    system = _SYSTEM_PROMPT.format(context=_build_swimmer_context(profile, goals))
+def sharpen_question(question: str, *, swimmer: SwimmerContext) -> str:
+    system = _SYSTEM_PROMPT.format(context=build_swimmer_context(swimmer))
     response = anthropic_client.messages.create(
         model=settings.sharpen_model,
         max_tokens=MAX_SHARPEN_TOKENS,

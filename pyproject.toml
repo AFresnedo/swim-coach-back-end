@@ -19,6 +19,7 @@ dependencies = [
     "sqlalchemy>=2.0.51",
     "voyageai>=0.5.0",
     "uvicorn[standard]>=0.51.0",
+    "pdfminer-six>=20260107",
 ]
 
 [dependency-groups]
